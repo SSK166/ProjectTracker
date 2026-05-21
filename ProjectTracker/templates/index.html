@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Tracker</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <div class="app">
+
+        <div class="sidebar">
+            <h2>Projects</h2>
+            <div id="project-list"></div>
+        </div>
+
+        <div class="main">
+            <div class="main-header">
+                <h1 id="selected-project-name">Select a project</h1>
+            </div>
+
+            <div class="table-wrapper">
+                <table id="project-table">
+                    <thead id="table-head"></thead>
+                    <tbody id="table-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="panel" id="side-panel">
+            <div class="panel-header">
+                <h3 id="panel-title">Row Details</h3>
+                <button class="close-btn" onclick="closePanel()">✕</button>
+            </div>
+            <div class="panel-body" id="panel-body"></div>
+            <div class="panel-footer">
+                <button class="save-btn" onclick="savePanel()">Save Changes</button>
+            </div>
+        </div>
+
+        <div class="overlay" id="overlay" onclick="closePanel()"></div>
+
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
