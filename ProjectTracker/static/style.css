@@ -352,3 +352,31 @@ tr.clickable:hover {
 .alert-item:last-child {
     border-bottom: none;
 }
+
+.tab-bar {
+    display: flex;
+    border-bottom: 1px solid #e0e0e0;
+    background: #fff;
+    padding: 0 24px;
+}
+
+.tab-btn {
+    padding: 14px 20px;
+    border: none;
+    background: none;
+    font-size: 13px;
+    font-weight: 500;
+    color: #888;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+}
+
+.tab-btn.active {
+    color: #4F46E5;
+    border-bottom-color: #4F46E5;
+}
+
+.tab-btn:hover {
+    color: #4F46E5;
+}

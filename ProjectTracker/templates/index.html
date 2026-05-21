@@ -16,19 +16,42 @@
         </div>
 
         <div class="main">
-            <div class="main-header">
-                <h1 id="selected-project-name">Select a project</h1>
+            <div class="tab-bar">
+                <button class="tab-btn active" onclick="switchTab('tracker')">Project Tracker</button>
+                <button class="tab-btn" onclick="switchTab('alerts')">Alerts</button>
             </div>
 
-            <div class="table-wrapper">
-                <table id="project-table">
-                    <thead id="table-head"></thead>
-                    <div id="alerts-bar" class="alerts-bar" style="display:none">
-                        <div class="alerts-title">⚠ Overdue Items</div>
-                        <div id="alerts-list"></div>
-                    </div>                    
-                    <tbody id="table-body"></tbody>
-                </table>
+            <div id="tab-tracker" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+                <div class="main-header">
+                    <h1 id="selected-project-name">Select a project</h1>
+                </div>
+                <div class="table-wrapper">
+                    <table id="project-table">
+                        <thead id="table-head"></thead>
+                        <tbody id="table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="tab-alerts" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+                <div class="main-header">
+                    <h1>Overdue Items</h1>
+                </div>
+                <div class="table-wrapper">
+                    <table id="alerts-table">
+                        <thead>
+                            <tr>
+                                <th>Project</th>
+                                <th>Packaging</th>
+                                <th>Option</th>
+                                <th>Status Field</th>
+                                <th>Current Value</th>
+                                <th>Deadline</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alerts-body"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 

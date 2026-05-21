@@ -94,7 +94,9 @@ async function loadProjects() {
         const div = document.createElement("div")
         div.className = "project-item"
         div.textContent = name
-        div.onclick = () => selectProject(name, div)
+        div.onclick = () => {selectProject(name, div);
+            switchTab('tracker')
+        }
         
         list.appendChild(div)
         
@@ -307,5 +309,54 @@ async function loadAlerts() {
     ).join("")
 }
 
+function switchTab(tab) {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"))
+    document.getElementById("tab-tracker").style.display = "none"
+    document.getElementById("tab-alerts").style.display = "none"
+
+    if (tab === "tracker") {
+        document.getElementById("tab-tracker").style.display = "flex"
+        document.querySelector(".tab-btn:first-child").classList.add("active")
+    } else {
+        document.getElementById("tab-alerts").style.display = "flex"
+        document.querySelector(".tab-btn:last-child").classList.add("active")
+        loadAlerts()
+    }
+}
+
+async function loadAlerts() {
+    const res = await fetch("/api/alerts")
+    const alerts = await res.json()
+
+    const body = document.getElementById("alerts-body")
+
+    if (alerts.length === 0) {
+        body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#888;padding:24px">No overdue items</td></tr>`
+        return
+    }
+
+    body.innerHTML = alerts
+        .sort((a, b) => a.deadline.localeCompare(b.deadline))
+        .map(a => `
+            <tr class="clickable" onclick="openPanelById(${a.project_id})">
+                <td>${a.project_name}</td>
+                <td>${a.packaging_type}</td>
+                <td>${a.packaging_option}</td>
+                <td>${a.column_name}</td>
+                <td>${a.current_value ?? "—"}</td>
+                <td style="color:#791F1F;font-weight:500">${a.deadline}</td>
+            </tr>
+        `).join("")
+}
+
+async function openPanelById(projectId) {
+    const res = await fetch(`/api/projects/id/${projectId}`)
+    const row = await res.json()
+    openPanel(row)
+}
+
 loadProjects()
 loadAlerts()
+
+
+//do switchTab('tracker')

@@ -114,6 +114,7 @@ def get_alerts():
 
     rows = conn.execute("""
         SELECT 
+            p.id as project_id,
             p.project_name,
             p.packaging_type,
             p.packaging_option,
@@ -126,10 +127,23 @@ def get_alerts():
             AND s.column_name = d.column_name
         WHERE d.deadline < ?
         AND s.current_value NOT IN ('Approved','Closed','Dispatched','Yes','Received')
+        ORDER BY d.deadline ASC
     """, (today,)).fetchall()
 
     conn.close()
     return [dict(row) for row in rows]
+
+@app.get("/api/projects/id/{project_id}")
+def get_project_by_id(project_id: int):
+    conn = get_conn()
+    today = date.today().isoformat()
+
+    row = conn.execute("""
+        SELECT * FROM projects WHERE id = ?
+    """, (project_id,)).fetchone()
+
+    conn.close()
+    return dict(row)
 
 @app.put("/api/status/{project_id}")
 def update_status(project_id: int, data: dict = Body(...)):
