@@ -63,25 +63,66 @@ const RED_VALUES = ["Rejected", "Delayed", "Correction", "Not Received"]
 let currentRowId = null
 let currentProjectRows = []
 
-// Load project list on page load
 async function loadProjects() {
     const res = await fetch("/api/projects")
     const projects = await res.json()
 
     const list = document.getElementById("project-list")
     list.innerHTML = ""
-    const searchBox=document.createElement("input")
-    searchBox.type="text"
-    searchBox.placeholder="Search Project"
-     
+    
+    // Create a container wrapper for the search layout
+    const searchContainer = document.createElement("div")
+    searchContainer.className = "search-container"
+    
+    const searchBox = document.createElement("input")
+    searchBox.type = "text"
+    searchBox.placeholder = "Search Project"
+    searchBox.classList.add("search-box")
+    
+    const searchButton = document.createElement("button")
+    searchButton.textContent = "Search"
+    searchButton.classList.add("search-btn")
+
+    // Append items together beautifully inside the container
+    searchContainer.appendChild(searchBox)
+    searchContainer.appendChild(searchButton)
+    list.appendChild(searchContainer)
+
+    const projectElements = []
+
     projects.forEach(name => {
         const div = document.createElement("div")
         div.className = "project-item"
         div.textContent = name
         div.onclick = () => selectProject(name, div)
+        
         list.appendChild(div)
+        
+        projectElements.push({ name: name.toLowerCase(), element: div, rawName: name })
     })
 
+    const performSearch = () => {
+        const filter = searchBox.value.toLowerCase()
+        let matchedProject = null
+
+        projectElements.forEach(item => {
+            if (item.name.includes(filter)) {
+                item.element.style.display = "" // Show it
+                if (!matchedProject) {
+                    matchedProject = item 
+                }
+            } else {
+                item.element.style.display = "none" 
+            }
+        })
+
+        if (matchedProject && filter.trim() !== "") {
+            selectProject(matchedProject.rawName, matchedProject.element)
+        }
+    }
+
+    searchBox.oninput = performSearch
+    searchButton.onclick = performSearch
 }
 
 async function selectProject(name, el) {
@@ -94,7 +135,7 @@ async function selectProject(name, el) {
     const res = await fetch(`/api/projects/${encodeURIComponent(name)}`)
     const rows = await res.json()
     currentProjectRows = rows
-
+    rows.forEach(r=>console.log(r["_health"]))
     renderTable(rows)
 }
 
@@ -102,7 +143,7 @@ function renderTable(rows) {
     if (rows.length === 0) return
 
     // Build headers from first row keys
-    const allKeys = Object.keys(rows[0])
+    const allKeys = Object.keys(rows[0]).filter(k=>k!="_health")
     const head = document.getElementById("table-head")
     const body = document.getElementById("table-body")
 
@@ -113,17 +154,11 @@ function renderTable(rows) {
         const tr = document.createElement("tr")
         tr.className = "clickable"
         tr.onclick = () => openPanel(row)
-
+        if(row._health=="red") tr.style.backgroundColor="#fd5a5a"
         allKeys.forEach(key => {
             const td = document.createElement("td")
             const val = row[key]
-
-            if (STATUS_COLS.includes(key) && val) {
-                td.innerHTML = `<span class="badge ${badgeClass(val)}">${val}</span>`
-            } else {
-                td.textContent = val ?? "—"
-            }
-
+            td.textContent = val ?? "—"
             tr.appendChild(td)
         })
 
@@ -162,7 +197,7 @@ async function openPanel(row) {
     let html = `<div class="section-title">Read-only Info</div>`
 
     // show non-status fields as read only
-    const skipKeys = ["id", "project_name", "packaging_type", "packaging_option", ...STATUS_COLS]
+    const skipKeys = ["id", "project_name","_health", "packaging_type", "packaging_option", ...STATUS_COLS]
     Object.entries(row).forEach(([key, val]) => {
         if (!skipKeys.includes(key)) {
             html += `<div class="field-group">
@@ -252,4 +287,25 @@ async function savePanel() {
     }
 }
 
+async function loadAlerts() {
+    const res = await fetch("/api/alerts")
+    const alerts = await res.json()
+
+    const bar = document.getElementById("alerts-bar")
+    const list = document.getElementById("alerts-list")
+
+    if (alerts.length === 0) {
+        bar.style.display = "none"
+        return
+    }
+
+    bar.style.display = "block"
+    list.innerHTML = alerts.map(a =>
+        `<div class="alert-item">
+            ${a.project_name} — ${a.packaging_type} / ${a.packaging_option} — ${a.column_name} — deadline was ${a.deadline}
+        </div>`
+    ).join("")
+}
+
 loadProjects()
+loadAlerts()

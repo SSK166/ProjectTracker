@@ -6,6 +6,7 @@ import sqlite3
 import pandas as pd
 from fastapi import Body
 import os
+from datetime import date 
 
 app = FastAPI()
 print("Running from:", os.getcwd())
@@ -35,11 +36,59 @@ def get_projects():
 @app.get("/api/projects/{project_name}")
 def get_project_rows(project_name: str):
     conn = get_conn()
+    
+    # get all rows for the project
     rows = conn.execute("""
-        SELECT * FROM projects WHERE project_name = ?
+        SELECT p.id, p.project_name, p.packaging_type, p.packaging_option
+        FROM projects p
+        WHERE p.project_name = ?
     """, (project_name,)).fetchall()
+    
+    result = []
+    today = date.today().isoformat()
+    
+    for row in rows:
+        row_dict = dict(row)
+        project_id = row_dict["id"]
+        
+        # get all status values for this row
+        statuses = conn.execute("""
+            SELECT column_name, current_value FROM status
+            WHERE project_id = ?
+        """, (project_id,)).fetchall()
+        
+        # get all deadlines for this row
+        deadlines = conn.execute("""
+            SELECT column_name, deadline FROM deadlines
+            WHERE project_id = ?
+        """, (project_id,)).fetchall()
+        
+        status_map = {s["column_name"]: s["current_value"] for s in statuses}
+        deadline_map = {d["column_name"]: d["deadline"] for d in deadlines}
+        
+        # add status values to row
+        for col in status_map:
+            row_dict[col] = status_map[col]
+        
+        # calculate overall row health
+        health = "green"
+        for col, deadline in deadline_map.items():
+            current_val = status_map.get(col, "")
+            is_complete = current_val in ["Approved", "Closed", "Dispatched", "Yes", "Received"]
+            is_overdue = deadline and today > deadline
+            
+            if is_overdue and not is_complete:
+                health = "red"
+                break
+            elif not is_complete and health != "red":
+                health = "yellow"
+        
+        row_dict["_health"] = health
+        result.append(row_dict)
+    
     conn.close()
-    return [dict(row) for row in rows]
+    return result
+
 
 @app.get("/api/status/{project_id}")
 def get_status(project_id: int):
@@ -57,6 +106,30 @@ def get_deadlines(project_id:int):
         SELECT column_name,deadline from deadlines WHERE project_id=?""",(project_id,)).fetchall()
     conn.close()
     return [dict(row)for row in selected]
+
+@app.get("/api/alerts")
+def get_alerts():
+    conn = get_conn()
+    today = date.today().isoformat()
+
+    rows = conn.execute("""
+        SELECT 
+            p.project_name,
+            p.packaging_type,
+            p.packaging_option,
+            s.column_name,
+            s.current_value,
+            d.deadline
+        FROM deadlines d
+        JOIN projects p ON p.id = d.project_id
+        JOIN status s ON s.project_id = d.project_id 
+            AND s.column_name = d.column_name
+        WHERE d.deadline < ?
+        AND s.current_value NOT IN ('Approved','Closed','Dispatched','Yes','Received')
+    """, (today,)).fetchall()
+
+    conn.close()
+    return [dict(row) for row in rows]
 
 @app.put("/api/status/{project_id}")
 def update_status(project_id: int, data: dict = Body(...)):
