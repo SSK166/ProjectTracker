@@ -380,3 +380,73 @@ tr.clickable:hover {
 .tab-btn:hover {
     color: #4F46E5;
 }
+
+.add-project-ip{
+    margin:50px 60px;
+    padding:20px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    height:40%;
+    width:75%;
+    justify-content:flex-start;
+    gap:10px;
+}
+
+.add-ip{
+    width:50%;
+    height:40px;
+    margin:auto;
+    border:1px solid #e0e0e0;
+    border-radius:6px;
+    text-align:left;
+    box-sizing:border-box;
+    padding-left: 12px;
+}
+
+.add-label {
+    width: 50%; 
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-top: 8px;
+}
+
+.add-project-btn {
+    padding: 10px 20px;
+    background: #4F46E5;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    align-self: center;
+    transition: background 0.15s ease-in-out;
+    position:relative;
+    left:-10%;
+    top:-5%;
+}
+
+.add-project-btn:hover {
+    background: #4338CA;
+}
+
+.delete-btn {
+    width: 100%;
+    padding: 10px;
+    background: #f32828;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.delete-btn:hover {
+    background: #e21515;
+}

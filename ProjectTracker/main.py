@@ -172,3 +172,23 @@ def save_deadlines(project_id:int,data:dict=Body(...)):
     conn.close()
     return {"status":"ok"}
 
+@app.post("/api/projects")
+def add_project(data:dict=Body(...)):
+    conn=get_conn()
+    conn.execute("""
+        INSERT INTO projects(project_name,packaging_type,packaging_option)
+        VALUES(?,?,?)
+    """,(data["project_name"],data["packaging_type"],data["packaging_option"]))
+    conn.commit()
+    conn.close()
+    return {"status":"ok"}
+
+@app.delete("/api/projects/{project_id}")
+def delete_project(project_id:int):
+    conn=get_conn()
+    conn.execute("DELETE FROM projects WHERE id=?",(project_id,))
+    conn.execute("DELETE FROM status WHERE project_id=?",(project_id,))
+    conn.execute("DELETE FROM deadlines WHERE project_id=?",(project_id,))
+    conn.commit()
+    conn.close()
+    return {"status":"ok"}

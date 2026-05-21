@@ -313,14 +313,19 @@ function switchTab(tab) {
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"))
     document.getElementById("tab-tracker").style.display = "none"
     document.getElementById("tab-alerts").style.display = "none"
+    document.getElementById("add-project-tab").style.display = "none"
+
 
     if (tab === "tracker") {
         document.getElementById("tab-tracker").style.display = "flex"
         document.querySelector(".tab-btn:first-child").classList.add("active")
-    } else {
+    } else if(tab=="alerts") {
         document.getElementById("tab-alerts").style.display = "flex"
         document.querySelector(".tab-btn:last-child").classList.add("active")
         loadAlerts()
+    } else if(tab=="add-project-tab") {
+        document.getElementById("add-project-tab").style.display = "flex"
+        document.querySelector(".tab-btn:nth-child(2)").classList.add("active")
     }
 }
 
@@ -355,8 +360,81 @@ async function openPanelById(projectId) {
     openPanel(row)
 }
 
+async function addProject(){
+    const nameInput = document.getElementById("new-project-name")    
+    const typeInput = document.getElementById("new-packaging-type")
+    const optionInput = document.getElementById("new-packaging-option")
+
+    const name = nameInput.value    
+    const packagingType = typeInput.value
+    const packagingOption = optionInput.value
+
+    if(!name || !packagingType || !packagingOption){
+        alert("Please fill all the fields")
+        return
+    }
+
+    const res = await fetch("/api/projects", { // Added leading absolute slash
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            project_name: name,
+            packaging_type: packagingType,
+            packaging_option: packagingOption
+        })
+    })
+
+    if(res.ok) {
+        alert("Project added successfully!")
+        nameInput.value = ""
+        typeInput.value = ""
+        optionInput.value = ""
+
+        await loadProjects()
+
+        switchTab('tracker')
+    } else {
+        alert("Server error occurred while adding project.")
+    }
+}
+
+async function deleteProject(){
+    console.log(`Project ID:${currentRowId}`)
+    
+    // Add a confirmation fallback so users don't drop rows by mistake
+    const confirmDelete = confirm("Are you sure you want to delete this packaging component row? This cannot be undone.")
+    if (!confirmDelete) return
+
+    //Delete the current project
+    const res = await fetch(`/api/projects/${currentRowId}`, { 
+        method: "DELETE" 
+    })
+    
+    if(res.ok){
+        alert("Project component successfully deleted")
+        closePanel()
+        
+        //loadProjects - changes the left panel
+        await loadProjects()
+        const activeProject = document.querySelector(".project-item.active")
+        //if there is still an active project under the same name then display it in the center grid else clear the grid and display "Select Project"
+        if (activeProject) {
+            const refreshRes = await fetch(`/api/projects/${encodeURIComponent(activeProject.textContent)}`)
+            //to get active projects
+            const rows = await refreshRes.json()
+            renderTable(rows)
+        } else {
+            document.getElementById("table-head").innerHTML = ""
+            document.getElementById("table-body").innerHTML = ""
+            document.getElementById("selected-project-name").textContent = "Select a project"
+        }
+        //load the left panel again to reflect changes
+        await loadAlerts()
+    }
+    else{
+        alert("Server error occurred while deleting project")
+    }
+}
+
 loadProjects()
 loadAlerts()
-
-
-//do switchTab('tracker')
