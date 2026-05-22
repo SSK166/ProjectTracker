@@ -19,8 +19,8 @@
             <div class="tab-bar">
                 <button class="tab-btn active" onclick="switchTab('tracker')">Project Tracker</button>
                 <button class="tab-btn" onclick="switchTab('add-project-tab')">Add Project</button>
-                <button class="tab-btn" onclick="switchTab('alerts')">Alerts</button>
-
+                <button class="tab-btn" onclick="switchTab('download-excel-tab')">Download Excel</button>
+                <button class="tab-btn" onclick="switchTab('alerts')">Alerts <span id="overdue-count-btn"></span></button>
             </div>
 
             <div id="tab-tracker" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
@@ -37,7 +37,7 @@
 
             <div id="tab-alerts" style="display:none;flex-direction:column;flex:1;overflow:hidden">
                 <div class="main-header">
-                    <h1>Overdue Items</h1>
+                    <h1>Overdue Items <span id="overdue-count"></span></h1>
                 </div>
                 <div class="table-wrapper">
                     <table id="alerts-table">
@@ -55,20 +55,38 @@
                     </table>
                 </div>
             </div>
+
             <div class="add-project-tab" id="add-project-tab" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+                <div class="main-header">
+                    <h1>Enter Project Details</h1>
+                </div>
                 <div class="add-project-ip">
                     <label class="add-label" for="new-project-name">Project Name</label>
                     <input class="add-ip" type="text" id="new-project-name" placeholder="Project Name">
-                    
+
                     <label class="add-label" for="new-packaging-type">Packaging Type</label>
-                    <input class="add-ip" type="text" id="new-packaging-type" placeholder="Packaging Type">    
-                    
+                    <input class="add-ip" type="text" id="new-packaging-type" placeholder="Packaging Type">
+
                     <label class="add-label" for="new-packaging-option">Packaging Option</label>
                     <input class="add-ip" type="text" id="new-packaging-option" placeholder="Packaging Option">
                 </div>
-                
+
                 <button class="add-project-btn" onclick="addProject()">Add Project</button>
             </div>
+
+            <div class="download-excel-tab" id="download-excel-tab" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+                <div class="main-header">
+                    <h1>Download Spreadsheet</h1>
+                </div>
+
+                <div class="download-form">
+                    <label class="download-label" for="file-name">Spreadsheet Name</label>
+                    <input class="download-input" type="text" id="file-name" placeholder="Spreadsheet Name">
+
+                    <button class="download-btn" onclick="downloadExcel()">Download Excel</button>
+                </div>
+            </div>
+
         </div>
 
         <div class="panel" id="side-panel">

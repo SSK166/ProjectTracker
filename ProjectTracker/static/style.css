@@ -17,7 +17,7 @@ body {
     overflow: hidden;
 }
 
-/* Sidebar */
+/* ─── Sidebar ─────────────────────────────────────────────── */
 .sidebar {
     width: 220px;
     background: #ffffff;
@@ -56,7 +56,7 @@ body {
     font-weight: 500;
 }
 
-/* Main */
+/* ─── Main area ───────────────────────────────────────────── */
 .main {
     flex: 1;
     display: flex;
@@ -82,6 +82,7 @@ body {
     padding: 20px 24px;
 }
 
+/* ─── Table ───────────────────────────────────────────────── */
 table {
     width: 100%;
     border-collapse: collapse;
@@ -117,7 +118,7 @@ tr.clickable:hover {
     cursor: pointer;
 }
 
-/* Status badges */
+/* ─── Status badges ───────────────────────────────────────── */
 .badge {
     display: inline-block;
     padding: 2px 8px;
@@ -131,7 +132,7 @@ tr.clickable:hover {
 .badge-red    { background: #FCEBEB; color: #791F1F; }
 .badge-gray   { background: #F1EFE8; color: #5F5E5A; }
 
-/* Side panel */
+/* ─── Side panel ──────────────────────────────────────────── */
 .panel {
     position: fixed;
     top: 0;
@@ -204,7 +205,7 @@ tr.clickable:hover {
     background: #4338CA;
 }
 
-/* Field groups in panel */
+/* ─── Panel field groups ──────────────────────────────────── */
 .field-group {
     margin-bottom: 20px;
 }
@@ -252,6 +253,7 @@ tr.clickable:hover {
     border-bottom: 1px solid #EEF2FF;
 }
 
+/* ─── Overlay ─────────────────────────────────────────────── */
 .overlay {
     display: none;
     position: fixed;
@@ -264,6 +266,7 @@ tr.clickable:hover {
     display: block;
 }
 
+/* ─── Deadline hints ──────────────────────────────────────── */
 .overdue {
     font-size: 11px;
     color: #791F1F;
@@ -276,7 +279,7 @@ tr.clickable:hover {
     margin-top: 4px;
 }
 
-/* Search Box and Button Wrapper Container */
+/* ─── Sidebar search ──────────────────────────────────────── */
 .search-container {
     display: flex;
     gap: 8px;
@@ -288,14 +291,12 @@ tr.clickable:hover {
     padding: 8px 12px;
     border: 1px solid #e0e0e0;
     border-radius: 6px;
-    font-size: 13px;
+    font-size: 10px;
     color: #1a1a1a;
-    height: 1005;
-    width:60%;
+    width: 60%;
     background: #fff;
     font-family: inherit;
     transition: border-color 0.15s ease;
-    font-size:10px;
 }
 
 .search-box:focus {
@@ -321,16 +322,17 @@ tr.clickable:hover {
     background: #4338CA;
 }
 
+/* ─── Alerts bar ──────────────────────────────────────────── */
 .alerts-bar {
     background: #FCEBEB;
     border-bottom: 1px solid #f5c6c6;
     padding: 12px 24px;
     max-height: 200px;
     overflow-y: auto;
-    position:absolute;
-    top:70%;
-    left:50%;
-    transform:translate(-50%, -50%);
+    position: absolute;
+    top: 70%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
 .alerts-title {
@@ -353,6 +355,7 @@ tr.clickable:hover {
     border-bottom: none;
 }
 
+/* ─── Tab bar ─────────────────────────────────────────────── */
 .tab-bar {
     display: flex;
     border-bottom: 1px solid #e0e0e0;
@@ -381,31 +384,32 @@ tr.clickable:hover {
     color: #4F46E5;
 }
 
-.add-project-ip{
-    margin:50px 60px;
-    padding:20px;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    height:40%;
-    width:75%;
-    justify-content:flex-start;
-    gap:10px;
+/* ─── Add Project tab ─────────────────────────────────────── */
+.add-project-ip {
+    margin: 50px 60px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 40%;
+    width: 75%;
+    justify-content: flex-start;
+    gap: 10px;
 }
 
-.add-ip{
-    width:50%;
-    height:40px;
-    margin:auto;
-    border:1px solid #e0e0e0;
-    border-radius:6px;
-    text-align:left;
-    box-sizing:border-box;
+.add-ip {
+    width: 50%;
+    height: 40px;
+    margin: auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    text-align: left;
+    box-sizing: border-box;
     padding-left: 12px;
 }
 
 .add-label {
-    width: 50%; 
+    width: 50%;
     text-align: left;
     font-size: 12px;
     font-weight: 600;
@@ -426,9 +430,9 @@ tr.clickable:hover {
     cursor: pointer;
     align-self: center;
     transition: background 0.15s ease-in-out;
-    position:relative;
-    left:-10%;
-    top:-5%;
+    position: relative;
+    left: -5%;
+    top: -5%;
 }
 
 .add-project-btn:hover {
@@ -449,4 +453,62 @@ tr.clickable:hover {
 
 .delete-btn:hover {
     background: #e21515;
+}
+
+.download-form {
+    margin: 50px 60px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 40%;
+    width: 75%;
+    justify-content: center;
+    gap: 10px;
+    position:absolute;
+    top:10%;
+    left:10%;
+}
+
+.download-label {
+    width: 50%;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-top: 8px;
+}
+
+.download-input {
+    width: 50%;
+    height: 40px;
+    margin:15px auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    text-align: left;
+    box-sizing: border-box;
+    padding-left: 12px;
+    position:relative;
+    top:-7%;
+}
+
+.download-btn {
+    padding: 10px 20px;
+    background: #4F46E5;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease-in-out;
+    position: relative;
+    left: -5%;
+    top: -15%;
+}
+
+.download-btn:hover {
+    background: #4338CA;
 }

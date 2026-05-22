@@ -2,12 +2,20 @@ const STATUS_COLS = [
     "KLD Status",
     "Artwork Status", 
     "Artwork to Vendor Status",
+    "Artwork to Vendor Status 2",
     "Dispatch Status",
     "Cost Closure Status",
     "Project Status",
     "Connectivity Status",
-    "PDF Approved"
+    "PDF Approved",
+    "Dimensions", //because only status cols are rendered on the side panel
+    "Code Creation", 
+    "Specification", 
+    "BOM", 
+    "SOP"
 ]
+
+const FREE_TEXT_COLS = ["Dimensions", "Code Creation", "Specification", "BOM", "SOP"]
 
 const ALLOWED_VALUES = {
     "KLD Status": [
@@ -18,6 +26,17 @@ const ALLOWED_VALUES = {
     "Artwork Status": [
         "Received",
         "Not Received"
+    ],
+
+    "Artwork to Vendor Status":[
+        "Delayed",
+        "Correction",
+        "Dispatched"
+    ],
+    "Artwork to Vendor Status 2":[
+        "Delayed",
+        "Correction",
+        "Dispatched"
     ],
 
     "Cost Closure Status": [
@@ -48,11 +67,6 @@ const ALLOWED_VALUES = {
         "Yes",
         "No",
         "Pending"
-    ],
-    "Artwork to Vendor Status":[
-        "Delayed",
-        "Correction",
-        "Dispatched"
     ]
 }
 
@@ -136,6 +150,7 @@ async function selectProject(name, el) {
 
     const res = await fetch(`/api/projects/${encodeURIComponent(name)}`)
     const rows = await res.json()
+    // console.log(`Rows:${JSON.stringify(rows)}`)
     currentProjectRows = rows
     rows.forEach(r=>console.log(r["_health"]))
     renderTable(rows)
@@ -148,7 +163,7 @@ function renderTable(rows) {
     const allKeys = Object.keys(rows[0]).filter(k=>k!="_health")
     const head = document.getElementById("table-head")
     const body = document.getElementById("table-body")
-
+    console.log(`Keys: ${allKeys.toString()}`)
     head.innerHTML = `<tr>${allKeys.map(k => `<th>${k}</th>`).join("")}</tr>`
     body.innerHTML = ""
 
@@ -212,9 +227,21 @@ async function openPanel(row) {
     html += `<div class="section-title">Status & Deadlines</div>`
 
     STATUS_COLS.forEach(col => {
+        if(col==="Artwork to Vendor Status 2"){
+            console.log(`Processing ${statusMap[col]} with deadline ${deadlineMap[col]}`)
+        }
         const currentVal = statusMap[col] ?? ""
         const deadline = deadlineMap[col] ?? ""
 
+        if (FREE_TEXT_COLS.includes(col)) {
+            // render as text input, no deadline picker
+            html += `<div class="field-group">
+                <div class="field-label">${col}</div>
+                <input type="text" id="status_${col}" value="${currentVal}" 
+                    style="width:100%;padding:8px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px">
+            </div>`
+            return
+        }
         let deadlineHint = ""
         if (deadline) {
             const isGreen = GREEN_VALUES.includes(currentVal)
@@ -289,31 +316,13 @@ async function savePanel() {
     }
 }
 
-async function loadAlerts() {
-    const res = await fetch("/api/alerts")
-    const alerts = await res.json()
-
-    const bar = document.getElementById("alerts-bar")
-    const list = document.getElementById("alerts-list")
-
-    if (alerts.length === 0) {
-        bar.style.display = "none"
-        return
-    }
-
-    bar.style.display = "block"
-    list.innerHTML = alerts.map(a =>
-        `<div class="alert-item">
-            ${a.project_name} — ${a.packaging_type} / ${a.packaging_option} — ${a.column_name} — deadline was ${a.deadline}
-        </div>`
-    ).join("")
-}
 
 function switchTab(tab) {
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"))
     document.getElementById("tab-tracker").style.display = "none"
     document.getElementById("tab-alerts").style.display = "none"
     document.getElementById("add-project-tab").style.display = "none"
+    document.getElementById("download-excel-tab").style.display="none"
 
 
     if (tab === "tracker") {
@@ -327,6 +336,10 @@ function switchTab(tab) {
         document.getElementById("add-project-tab").style.display = "flex"
         document.querySelector(".tab-btn:nth-child(2)").classList.add("active")
     }
+    else if(tab==="download-excel-tab"){
+        document.getElementById("download-excel-tab").style.display = "flex"
+        document.querySelector(".tab-btn:nth-child(3)").classList.add("active")
+    }
 }
 
 async function loadAlerts() {
@@ -339,7 +352,10 @@ async function loadAlerts() {
         body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#888;padding:24px">No overdue items</td></tr>`
         return
     }
-
+    const overdueCount=document.getElementById("overdue-count")
+    overdueCount.textContent=`(${alerts.length})`
+    const overdueCountBtn=document.getElementById("overdue-count-btn")
+    overdueCountBtn.textContent=`(${alerts.length})`
     body.innerHTML = alerts
         .sort((a, b) => a.deadline.localeCompare(b.deadline))
         .map(a => `
@@ -434,6 +450,64 @@ async function deleteProject(){
     else{
         alert("Server error occurred while deleting project")
     }
+}
+
+
+async function downloadExcel(){
+    const nameIp = document.getElementById("file-name");
+    console.log(nameIp.value)
+    const fileName = nameIp.value;
+
+    if(!fileName){
+        alert("Please enter a file name")
+        return
+    }
+
+    const res = await fetch(`api/download/${encodeURIComponent(fileName)}`);
+
+    if(res.ok){
+
+        // converts response to blob - immutable file object
+        const blob = await res.blob();
+
+        // Save as dialog for compatible browsers
+        if (window.showSaveFilePicker) {
+            const handle = await window.showSaveFilePicker({
+                suggestedName: `${fileName}.xlsx`,
+                types: [{
+                    description: "Excel File",
+                    accept: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"]
+                    }
+                }]
+            });
+
+            const writable = await handle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+
+            alert("File saved successfully!");
+        }
+
+       //alternative for incompatible browsers
+        else {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${fileName}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+
+            alert("File downloaded successfully! Check your downloads folder");
+        }
+
+    }
+    else{
+        alert("Server error in downloading file. Please try again")
+    }
+    switchTab('tracker')
 }
 
 loadProjects()

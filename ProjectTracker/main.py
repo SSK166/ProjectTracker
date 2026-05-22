@@ -7,6 +7,7 @@ import pandas as pd
 from fastapi import Body
 import os
 from datetime import date 
+from fastapi.responses import FileResponse
 
 app = FastAPI()
 print("Running from:", os.getcwd())
@@ -49,6 +50,8 @@ def get_project_rows(project_name: str):
     
     for row in rows:
         row_dict = dict(row)
+        # for row_key in row_dict:
+        #     print(f"Row Key:{row_key}")
         project_id = row_dict["id"]
         
         # get all status values for this row
@@ -67,12 +70,15 @@ def get_project_rows(project_name: str):
         deadline_map = {d["column_name"]: d["deadline"] for d in deadlines}
         
         # add status values to row
-        for col in status_map:
-            row_dict[col] = status_map[col]
+        for col in STATUS_COLUMNS:#explained in database.py status creation
+            row_dict[col] = status_map.get(col, None)
         
         # calculate overall row health
         health = "green"
+        TEXT_COLS = ["Dimensions", "Code Creation", "Specification", "BOM", "SOP"]
         for col, deadline in deadline_map.items():
+            if col in TEXT_COLS:
+                continue # we skip health calculation for text only fields
             current_val = status_map.get(col, "")
             is_complete = current_val in ["Approved", "Closed", "Dispatched", "Yes", "Received"]
             is_overdue = deadline and today > deadline
@@ -87,6 +93,7 @@ def get_project_rows(project_name: str):
         result.append(row_dict)
     
     conn.close()
+    # print(f"Project Rows for {project_name}: {result}")
     return result
 
 
@@ -97,6 +104,8 @@ def get_status(project_id: int):
         SELECT * FROM status WHERE project_id = ?
     """, (project_id,)).fetchall()
     conn.close()
+    # for row in rows:
+    #     print(f"Status Row: {dict(row)}")
     return [dict(row) for row in rows]
 
 @app.get("/api/deadlines/{project_id}")
@@ -150,9 +159,10 @@ def update_status(project_id: int, data: dict = Body(...)):
     conn = get_conn()
     for col, value in data.items():
         conn.execute("""
-            UPDATE status SET current_value = ?
-            WHERE project_id = ? AND column_name = ?
-        """, (value, project_id, col))
+            INSERT INTO status (project_id, column_name, current_value)
+            VALUES (?, ?, ?)
+            ON CONFLICT(project_id, column_name) DO UPDATE SET current_value = ?
+        """, (project_id, col, value, value))
     conn.commit()
     conn.close()
     return {"status": "ok"}
@@ -172,16 +182,51 @@ def save_deadlines(project_id:int,data:dict=Body(...)):
     conn.close()
     return {"status":"ok"}
 
+STATUS_COLUMNS = [
+    "KLD Status",
+    "Artwork Status", 
+    "Artwork to Vendor Status",
+    "Artwork to Vendor Status 2",
+    "Dispatch Status",
+    "Cost Closure Status",
+    "Project Status",
+    "Connectivity Status",
+    "PDF Approved",
+    "Dimensions",
+    "Code Creation",
+    "Specification",
+    "BOM",
+    "SOP"
+]
+
+BASE_COLUMNS=[
+    "project_name",
+    "packaging_type",
+    "packaging_option"
+]
+
 @app.post("/api/projects")
-def add_project(data:dict=Body(...)):
-    conn=get_conn()
-    conn.execute("""
-        INSERT INTO projects(project_name,packaging_type,packaging_option)
-        VALUES(?,?,?)
-    """,(data["project_name"],data["packaging_type"],data["packaging_option"]))
+def add_project(data: dict = Body(...)):
+    conn = get_conn()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        INSERT INTO projects (project_name, packaging_type, packaging_option)
+        VALUES (?, ?, ?)
+    """, (data["project_name"], data["packaging_type"], data["packaging_option"]))
+    
+    project_id = cursor.lastrowid
+    
+    # initialize empty status rows for every status column
+    for col in STATUS_COLUMNS:
+        cursor.execute("""
+            INSERT INTO status (project_id, column_name, current_value)
+            VALUES (?, ?, NULL)
+        """, (project_id, col))
+    
     conn.commit()
     conn.close()
-    return {"status":"ok"}
+    return {"status": "ok"}
 
 @app.delete("/api/projects/{project_id}")
 def delete_project(project_id:int):
@@ -192,3 +237,29 @@ def delete_project(project_id:int):
     conn.commit()
     conn.close()
     return {"status":"ok"}
+
+
+@app.get("/api/download/{excel_name}")
+def download_excel(excel_name: str):
+    projects = get_projects()
+    df = []
+    for project in projects:
+        df.extend(get_project_rows(project))
+    df = pd.DataFrame(df)
+    df = df[BASE_COLUMNS + STATUS_COLUMNS]
+    
+    prev = None
+    for idx, row in df.iterrows():
+        if row["project_name"] != prev:
+            prev = row["project_name"]
+        else:
+            df.at[idx, "project_name"] = ""
+    
+    file_path = f"{excel_name}.xlsx"
+    df.to_excel(file_path, index=False)
+    
+    return FileResponse(
+        path=file_path,
+        filename=f"{excel_name}.xlsx",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
