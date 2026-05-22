@@ -9,13 +9,13 @@ const STATUS_COLS = [
     "Connectivity Status",
     "PDF Approved",
     "Dimensions", //because only status cols are rendered on the side panel
-    "Code Creation", 
+    "Code creation", 
     "Specification", 
     "BOM", 
     "SOP"
 ]
 
-const FREE_TEXT_COLS = ["Dimensions", "Code Creation", "Specification", "BOM", "SOP"]
+const FREE_TEXT_COLS = ["Dimensions", "Code creation", "Specification", "BOM", "SOP"]
 
 const ALLOWED_VALUES = {
     "KLD Status": [
@@ -116,7 +116,7 @@ async function loadProjects() {
         
         projectElements.push({ name: name.toLowerCase(), element: div, rawName: name })
     })
-
+    
     const performSearch = () => {
         const filter = searchBox.value.toLowerCase()
         let matchedProject = null
@@ -152,8 +152,13 @@ async function selectProject(name, el) {
     const rows = await res.json()
     // console.log(`Rows:${JSON.stringify(rows)}`)
     currentProjectRows = rows
-    rows.forEach(r=>console.log(r["_health"]))
     renderTable(rows)
+}
+
+function isFullyGreen(row) {
+    const greenVals=["Approved","KLD Shared","Closed","Received","Yes","Dispatched"]
+    const checkCols = STATUS_COLS.filter(c => !FREE_TEXT_COLS.includes(c))
+    return checkCols.every(col => greenVals.includes(row[col]))
 }
 
 function renderTable(rows) {
@@ -163,7 +168,6 @@ function renderTable(rows) {
     const allKeys = Object.keys(rows[0]).filter(k=>k!="_health")
     const head = document.getElementById("table-head")
     const body = document.getElementById("table-body")
-    console.log(`Keys: ${allKeys.toString()}`)
     head.innerHTML = `<tr>${allKeys.map(k => `<th>${k}</th>`).join("")}</tr>`
     body.innerHTML = ""
 
@@ -172,10 +176,12 @@ function renderTable(rows) {
         tr.className = "clickable"
         tr.onclick = () => openPanel(row)
         if(row._health=="red") tr.style.backgroundColor="#fd5a5a"
+        else if(row._health==="yellow") tr.style.backgroundColor="#ffed69"
+        else if(isFullyGreen(row)) tr.style.backgroundColor="#7bff8f"
         allKeys.forEach(key => {
             const td = document.createElement("td")
             const val = row[key]
-            td.textContent = val ?? "—"
+            td.textContent = (val==null || val==="") ? "—":val
             tr.appendChild(td)
         })
 
@@ -183,12 +189,12 @@ function renderTable(rows) {
     })
 }
 
-function badgeClass(val) {
-    if (GREEN_VALUES.includes(val))  return "badge-green"
-    if (YELLOW_VALUES.includes(val)) return "badge-yellow"
-    if (RED_VALUES.includes(val))    return "badge-red"
-    return "badge-gray"
-}
+// function badgeClass(val) {
+//     if (GREEN_VALUES.includes(val))  return "badge-green"
+//     if (YELLOW_VALUES.includes(val)) return "badge-yellow"
+//     if (RED_VALUES.includes(val))    return "badge-red"
+//     return "badge-gray"
+// }
 
 async function openPanel(row) {
     currentRowId = row.id
@@ -205,7 +211,11 @@ async function openPanel(row) {
 
     // build lookup maps
     const statusMap = {}
-    statusData.forEach(s => statusMap[s.column_name] = s.current_value ? s.current_value.trim() : "")
+    const completionMap = {}
+    statusData.forEach(s => {
+        statusMap[s.column_name] = s.current_value ? s.current_value.trim() : ""
+        completionMap[s.column_name] = s.completion_date ?? ""
+    })
     const deadlineMap = {}
     deadlineData.forEach(d => deadlineMap[d.column_name] = d.deadline)
 
@@ -227,9 +237,6 @@ async function openPanel(row) {
     html += `<div class="section-title">Status & Deadlines</div>`
 
     STATUS_COLS.forEach(col => {
-        if(col==="Artwork to Vendor Status 2"){
-            console.log(`Processing ${statusMap[col]} with deadline ${deadlineMap[col]}`)
-        }
         const currentVal = statusMap[col] ?? ""
         const deadline = deadlineMap[col] ?? ""
 
@@ -242,15 +249,20 @@ async function openPanel(row) {
             </div>`
             return
         }
-        let deadlineHint = ""
-        if (deadline) {
-            const isGreen = GREEN_VALUES.includes(currentVal)
-            const isOverdue = today > deadline
-            if (isOverdue && !isGreen) {
-                deadlineHint = `<div class="overdue">⚠ Overdue — deadline was ${deadline}</div>`
-            } else if (!isOverdue && isGreen) {
-                deadlineHint = `<div class="on-time">✓ Completed on time</div>`
+        let submittedOnTime=true;
+        let hint = ""
+        if (completionMap[col]) {
+            const completedOnTime = deadline ? completionMap[col] <= deadline : true
+            if (completedOnTime) {
+                hint = `<div class="on-time">✓ Completed on time — ${completionMap[col]}</div>`
+            } else {
+                hint = `<div class="overdue">⚠ Completed late — ${completionMap[col]} (deadline was ${deadline})</div>`
             }
+        } else if (deadline && today > deadline) {
+            hint = `<div class="overdue">⚠ Overdue — deadline was ${deadline}</div>`
+        }
+        else if(deadline && deadline==today){
+            hint = `<div class="overdue">➜ To be completed today</div>`
         }
 
         const options = ALLOWED_VALUES[col] ?? []
@@ -266,7 +278,7 @@ async function openPanel(row) {
                 ${optionHtml}
             </select>
             <input type="date" id="deadline_${col}" value="${deadline}" style="margin-top:6px">
-            ${deadlineHint}
+            ${hint}
         </div>`
     })
 
@@ -314,6 +326,9 @@ async function savePanel() {
         const rows = await res.json()
         renderTable(rows)
     }
+
+    await loadAlerts();
+    await loadDueToday();//to load the due today and alerts tab on saving because there can be changes
 }
 
 
@@ -323,6 +338,7 @@ function switchTab(tab) {
     document.getElementById("tab-alerts").style.display = "none"
     document.getElementById("add-project-tab").style.display = "none"
     document.getElementById("download-excel-tab").style.display="none"
+    document.getElementById("due-today-tab").style.display = "none"
     document.getElementById("import-excel-tab").style.display = "none"
 
     if (tab === "tracker") {
@@ -342,6 +358,11 @@ function switchTab(tab) {
         document.querySelector(".tab-btn:nth-child(4)").classList.add("active")
         loadAlerts()
     } 
+    else if (tab === "due-today-tab") {
+        document.getElementById("due-today-tab").style.display = "flex"
+        document.querySelector(".tab-btn:nth-child(5)").classList.add("active")
+        loadDueToday()
+    }
     else if (tab === "import-excel-tab") {
         document.getElementById("import-excel-tab").style.display = "flex"
         document.querySelector(".tab-btn:last-child").classList.add("active")
@@ -351,17 +372,18 @@ function switchTab(tab) {
 async function loadAlerts() {
     const res = await fetch("/api/alerts")
     const alerts = await res.json()
-
     const body = document.getElementById("alerts-body")
+    const overdueCount = document.getElementById("overdue-count")
+    const overdueCountBtn = document.getElementById("overdue-count-btn")
+    overdueCount.textContent = alerts.length > 0 ? `(${alerts.length})` : ""
+    overdueCountBtn.textContent = alerts.length > 0 ? `(${alerts.length})` : ""
 
     if (alerts.length === 0) {
+        // console.log("Now");
         body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#888;padding:24px">No overdue items</td></tr>`
         return
     }
-    const overdueCount=document.getElementById("overdue-count")
-    overdueCount.textContent=`(${alerts.length})`
-    const overdueCountBtn=document.getElementById("overdue-count-btn")
-    overdueCountBtn.textContent=`(${alerts.length})`
+
     body.innerHTML = alerts
         .sort((a, b) => a.deadline.localeCompare(b.deadline))
         .map(a => `
@@ -370,7 +392,7 @@ async function loadAlerts() {
                 <td>${a.packaging_type}</td>
                 <td>${a.packaging_option}</td>
                 <td>${a.column_name}</td>
-                <td>${a.current_value ?? "—"}</td>
+                <td>${(a.current_value==null || a.current_value==="") ? "—":a.current_value}</td>
                 <td style="color:#791F1F;font-weight:500">${a.deadline}</td>
             </tr>
         `).join("")
@@ -386,7 +408,7 @@ async function addProject(){
     const nameInput = document.getElementById("new-project-name")    
     const typeInput = document.getElementById("new-packaging-type")
     const optionInput = document.getElementById("new-packaging-option")
-
+    const today = new Date().toISOString().split("T")[0]
     const name = nameInput.value    
     const packagingType = typeInput.value
     const packagingOption = optionInput.value
@@ -421,7 +443,6 @@ async function addProject(){
 }
 
 async function deleteProject(){
-    console.log(`Project ID:${currentRowId}`)
     
     // Add a confirmation fallback so users don't drop rows by mistake
     const confirmDelete = confirm("Are you sure you want to delete this packaging component row? This cannot be undone.")
@@ -450,8 +471,9 @@ async function deleteProject(){
             document.getElementById("table-body").innerHTML = ""
             document.getElementById("selected-project-name").textContent = "Select a project"
         }
-        //load the left panel again to reflect changes
+        //load the left panel again to reflect changes (also the alerts and duetoday)
         await loadAlerts()
+        await loadDueToday()
     }
     else{
         alert("Server error occurred while deleting project")
@@ -461,7 +483,6 @@ async function deleteProject(){
 
 async function downloadExcel(){
     const nameIp = document.getElementById("file-name");
-    console.log(nameIp.value)
     const fileName = nameIp.value;
 
     if(!fileName){
@@ -548,5 +569,36 @@ async function importExcel() {
     }
 }
 
+async function loadDueToday() {
+    const res = await fetch("/api/due-today")
+    const items = await res.json()
+
+    const body = document.getElementById("due-today-body")
+    const count = document.getElementById("due-today-count")
+    const countBtn = document.getElementById("due-today-count-btn")
+    
+    if (items.length === 0) {
+        count.textContent = ""
+        countBtn.textContent=""
+        body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#888;padding:24px">No tasks due today</td></tr>`
+        return
+    }
+
+    count.textContent = `(${items.length})`
+    countBtn.textContent = `(${items.length})`
+    body.innerHTML = items.map(a => `
+        <tr class="clickable" onclick="openPanelById(${a.project_id})">
+            <td>${a.project_name}</td>
+            <td>${a.packaging_type}</td>
+            <td>${a.packaging_option}</td>
+            <td>${a.column_name}</td>
+            <td>${(a.current_value==null || a.current_value==="") ? "—":a.current_value}</td>
+            <td style="color:#633806;font-weight:500">${a.deadline}</td>
+        </tr>
+    `).join("")
+    // (val == null || val === "") ? "—" : val
+}
+
 loadProjects()
 loadAlerts()
+loadDueToday()

@@ -21,6 +21,7 @@
                 <button class="tab-btn" onclick="switchTab('add-project-tab')">Add Project</button>
                 <button class="tab-btn" onclick="switchTab('download-excel-tab')">Download Excel</button>
                 <button class="tab-btn" onclick="switchTab('alerts')">Alerts <span id="overdue-count-btn"></span></button>
+                <button class="tab-btn" onclick="switchTab('due-today-tab')">Due Today <span id="due-today-count-btn"></span></button>
                 <button class="tab-btn" onclick="switchTab('import-excel-tab')">Import Excel</button>
             </div>
 
@@ -85,6 +86,26 @@
                     <input class="download-input" type="text" id="file-name" placeholder="Spreadsheet Name">
 
                     <button class="download-btn" onclick="downloadExcel()">Download Excel</button>
+                </div>
+            </div>
+            <div class="due-today-tab" id="due-today-tab" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+                <div class="main-header">
+                    <h1>Due Today <span id="due-today-count"></span></h1>
+                </div>
+                <div class="table-wrapper">
+                    <table id="due-today-table">
+                        <thead>
+                            <tr>
+                                <th>Project</th>
+                                <th>Packaging</th>
+                                <th>Option</th>
+                                <th>Status Field</th>
+                                <th>Current Value</th>
+                                <th>Deadline</th>
+                            </tr>
+                        </thead>
+                        <tbody id="due-today-body"></tbody>
+                    </table>
                 </div>
             </div>
             <div class="import-excel-tab" id="import-excel-tab" style="display:none;flex-direction:column;flex:1;overflow:hidden;">

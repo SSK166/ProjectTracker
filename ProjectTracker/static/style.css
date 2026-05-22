@@ -268,14 +268,14 @@ tr.clickable:hover {
 
 /* ─── Deadline hints ──────────────────────────────────────── */
 .overdue {
-    font-size: 11px;
+    font-size:12px;
     color: #791F1F;
     margin-top: 4px;
 }
 
 .on-time {
-    font-size: 11px;
-    color: #27500A;
+    font-size: 12px;
+    color: #1a3606;
     margin-top: 4px;
 }
 
