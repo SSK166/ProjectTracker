@@ -323,22 +323,28 @@ function switchTab(tab) {
     document.getElementById("tab-alerts").style.display = "none"
     document.getElementById("add-project-tab").style.display = "none"
     document.getElementById("download-excel-tab").style.display="none"
-
+    document.getElementById("import-excel-tab").style.display = "none"
 
     if (tab === "tracker") {
         document.getElementById("tab-tracker").style.display = "flex"
         document.querySelector(".tab-btn:first-child").classList.add("active")
-    } else if(tab=="alerts") {
-        document.getElementById("tab-alerts").style.display = "flex"
-        document.querySelector(".tab-btn:last-child").classList.add("active")
-        loadAlerts()
-    } else if(tab=="add-project-tab") {
+    } 
+    else if(tab=="add-project-tab") {
         document.getElementById("add-project-tab").style.display = "flex"
         document.querySelector(".tab-btn:nth-child(2)").classList.add("active")
     }
     else if(tab==="download-excel-tab"){
         document.getElementById("download-excel-tab").style.display = "flex"
         document.querySelector(".tab-btn:nth-child(3)").classList.add("active")
+    }
+    else if(tab=="alerts") {
+        document.getElementById("tab-alerts").style.display = "flex"
+        document.querySelector(".tab-btn:nth-child(4)").classList.add("active")
+        loadAlerts()
+    } 
+    else if (tab === "import-excel-tab") {
+        document.getElementById("import-excel-tab").style.display = "flex"
+        document.querySelector(".tab-btn:last-child").classList.add("active")
     }
 }
 
@@ -508,6 +514,38 @@ async function downloadExcel(){
         alert("Server error in downloading file. Please try again")
     }
     switchTab('tracker')
+}
+
+async function importExcel() {
+    const fileInput = document.getElementById("import-file")
+    const file = fileInput.files[0]
+
+    if (!file) {
+        alert("Please select an Excel file first")
+        return
+    }
+
+    const confirmed = confirm(`Import "${file.name}" into the tracker? This will add all rows from the file.`)
+    if (!confirmed) return
+
+    const formData = new FormData()
+    formData.append("file", file)
+
+    const res = await fetch("/api/import", {
+        method: "POST",
+        body: formData
+    })
+
+    if (res.ok) {
+        const result = await res.json()
+        alert(`Import successful! ${result.rows_imported} rows added.`)
+        fileInput.value = ""
+        await loadProjects()
+        switchTab("tracker")
+    } else {
+        const err = await res.json()
+        alert(`Import failed: ${err.detail ?? "Server error"}`)
+    }
 }
 
 loadProjects()

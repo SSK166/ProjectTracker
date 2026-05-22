@@ -512,3 +512,70 @@ tr.clickable:hover {
 .download-btn:hover {
     background: #4338CA;
 }
+
+.import-form {
+    margin: 50px 60px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 40%;
+    width: 75%;
+    justify-content: flex-start;
+    gap: 10px;
+}
+
+.import-label {
+    width: 50%;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-top: 8px;
+}
+
+.import-input {
+    width: 50%;
+    height: 40px;
+    margin: auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    font-family: inherit;
+    font-size: 13px;
+    background: #fff;
+    cursor: pointer;
+}
+
+.import-input::-webkit-file-upload-button {
+    padding: 6px 12px;
+    background: #f0f0f0;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+.import-btn {
+    padding: 10px 20px;
+    background: #4F46E5;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    align-self: center;
+    transition: background 0.15s ease-in-out;
+    position: relative;
+    left: -5%;
+    top: -5%;
+}
+
+.import-btn:hover {
+    background: #4338CA;
+}

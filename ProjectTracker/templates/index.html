@@ -21,6 +21,7 @@
                 <button class="tab-btn" onclick="switchTab('add-project-tab')">Add Project</button>
                 <button class="tab-btn" onclick="switchTab('download-excel-tab')">Download Excel</button>
                 <button class="tab-btn" onclick="switchTab('alerts')">Alerts <span id="overdue-count-btn"></span></button>
+                <button class="tab-btn" onclick="switchTab('import-excel-tab')">Import Excel</button>
             </div>
 
             <div id="tab-tracker" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
@@ -84,6 +85,17 @@
                     <input class="download-input" type="text" id="file-name" placeholder="Spreadsheet Name">
 
                     <button class="download-btn" onclick="downloadExcel()">Download Excel</button>
+                </div>
+            </div>
+            <div class="import-excel-tab" id="import-excel-tab" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+                <div class="main-header">
+                    <h1>Import Spreadsheet</h1>
+                </div>
+
+                <div class="import-form">
+                    <label class="import-label" for="import-file">Select Excel File</label>
+                    <input class="import-input" type="file" id="import-file" accept=".xlsx,.xls">
+                    <button class="import-btn" onclick="importExcel()">Import Excel</button>
                 </div>
             </div>
 

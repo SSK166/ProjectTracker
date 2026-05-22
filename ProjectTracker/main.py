@@ -8,6 +8,8 @@ from fastapi import Body
 import os
 from datetime import date 
 from fastapi.responses import FileResponse
+from fastapi import File, UploadFile
+import tempfile
 
 app = FastAPI()
 print("Running from:", os.getcwd())
@@ -263,3 +265,49 @@ def download_excel(excel_name: str):
         filename=f"{excel_name}.xlsx",
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
+@app.post("/api/import")
+async def import_excel(file: UploadFile = File(...)):
+    # Save uploaded file to a temp location
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+        contents = await file.read()
+        tmp.write(contents)
+        tmp_path = tmp.name
+
+    try:
+        df = pd.read_excel(tmp_path, sheet_name="Project Tracker")
+        df = df.rename(columns={"Unnamed: 8": "Artwork to Vendor Status 2"})
+        df["Project"] = df["Project"].ffill()
+
+        conn = get_conn()
+        cursor = conn.cursor()
+        rows_imported = 0
+
+        for _, row in df.iterrows():
+            cursor.execute("""
+                INSERT INTO projects (project_name, packaging_type, packaging_option)
+                VALUES (?, ?, ?)
+            """, (
+                row["Project"],
+                row.get("Packaging Type", None),
+                row.get("Packaging Option", None)
+            ))
+
+            project_id = cursor.lastrowid
+
+            for col in STATUS_COLUMNS:
+                value = row.get(col, None)
+                cursor.execute("""
+                    INSERT INTO status (project_id, column_name, current_value)
+                    VALUES (?, ?, ?)
+                """, (project_id, col, str(value) if pd.notna(value) else None))
+
+            rows_imported += 1
+
+        conn.commit()
+        conn.close()
+
+    finally:
+        os.remove(tmp_path)
+
+    return {"status": "ok", "rows_imported": rows_imported}
