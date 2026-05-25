@@ -72,7 +72,6 @@ def import_from_excel():
 
     df = pd.read_excel(EXCEL_PATH, sheet_name="Project Tracker")
     df = df.rename(columns={
-        "Unnamed: 8": "Artwork to Vendor Status 2",
         "Code creation ": "Code creation"
     })
     df["Code creation"] = df["Code creation"].apply(

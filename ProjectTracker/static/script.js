@@ -2,7 +2,6 @@ const STATUS_COLS = [
     "KLD Status",
     "Artwork Status", 
     "Artwork to Vendor Status",
-    "Artwork to Vendor Status 2",
     "Dispatch Status",
     "Cost Closure Status",
     "Project Status",
@@ -29,11 +28,6 @@ const ALLOWED_VALUES = {
     ],
 
     "Artwork to Vendor Status":[
-        "Delayed",
-        "Correction",
-        "Dispatched"
-    ],
-    "Artwork to Vendor Status 2":[
         "Delayed",
         "Correction",
         "Dispatched"
@@ -146,26 +140,39 @@ async function selectProject(name, el) {
     document.querySelectorAll(".project-item").forEach(i => i.classList.remove("active"))
     el.classList.add("active")
 
+    console.log(name)
     document.getElementById("selected-project-name").textContent = name
 
     const res = await fetch(`/api/projects/${encodeURIComponent(name)}`)
     const rows = await res.json()
+    const alertsProject=await fetch(`/api/alerts/${encodeURIComponent(name)}`)
+    const alerts=await alertsProject.json()
+    // console.log(`From selectProject ${alerts.length}`)
     // console.log(`Rows:${JSON.stringify(rows)}`)
+    const dueRes=await fetch(`api/due-today/${encodeURIComponent(name)}`)
+    const dues=await dueRes.json()
+    console.log(`From selectProject ${dues.length}`)
     currentProjectRows = rows
+    //to make the alerts and due today for the projects visible on selection
+    document.getElementById("project-alerts").style.display = "flex"
+    document.getElementById("project-alerts-table").style.display = "table"
+    document.getElementById("project-today").style.display = "flex"
+    document.getElementById("project-today-table").style.display = "table"
     renderTable(rows)
+    renderAlerts(alerts)
+    renderDueToday(dues)
 }
 
 function isFullyGreen(row) {
-    const greenVals=["Approved","KLD Shared","Closed","Received","Yes","Dispatched"]
-    const checkCols = STATUS_COLS.filter(c => !FREE_TEXT_COLS.includes(c))
-    return checkCols.every(col => greenVals.includes(row[col]))
+    const val = row["Project Status"]
+    return val != null && val.trim().toLowerCase() === "approved"
 }
 
 function renderTable(rows) {
     if (rows.length === 0) return
 
     // Build headers from first row keys
-    const allKeys = Object.keys(rows[0]).filter(k=>k!="_health")
+    const allKeys = Object.keys(rows[0]).filter(k=>k!="_health" && k!="red_cols" && k!="yellow_cols")
     const head = document.getElementById("table-head")
     const body = document.getElementById("table-body")
     head.innerHTML = `<tr>${allKeys.map(k => `<th>${k}</th>`).join("")}</tr>`
@@ -175,12 +182,17 @@ function renderTable(rows) {
         const tr = document.createElement("tr")
         tr.className = "clickable"
         tr.onclick = () => openPanel(row)
-        if(row._health=="red") tr.style.backgroundColor="#fd5a5a"
-        else if(row._health==="yellow") tr.style.backgroundColor="#ffed69"
-        else if(isFullyGreen(row)) tr.style.backgroundColor="#7bff8f"
+        const fullyGreen=isFullyGreen(row)
+        if(fullyGreen) tr.style.backgroundColor="#7bff8f"
         allKeys.forEach(key => {
             const td = document.createElement("td")
             const val = row[key]
+            if (row.red_cols && row.red_cols.includes(key)) {
+                td.style.backgroundColor = "#fd5a5a"
+            }
+            if(row.yellow_cols && row.yellow_cols.includes(key)){
+                td.style.backgroundColor="#ffed69"
+            }
             td.textContent = (val==null || val==="") ? "—":val
             tr.appendChild(td)
         })
@@ -188,6 +200,86 @@ function renderTable(rows) {
         body.appendChild(tr)
     })
 }
+
+function renderAlerts(alerts){
+
+    const alertsBody = document.getElementById("project-alerts-body")
+    const alertCount = document.getElementById("projects-alert-count")
+
+    alertsBody.innerHTML = ""
+
+    if (alerts.length === 0){
+        alertCount.textContent = ""
+        alertsBody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#888;padding:16px">No overdue items</td></tr>`
+        return
+    }
+
+    alertCount.textContent = `(${alerts.length})`
+
+    const keys = Object.keys(alerts[0]).filter(k => k !== "project_id")
+
+    alerts.forEach(a => {
+
+        const tr = document.createElement("tr")
+        tr.className = "clickable"
+        tr.onclick = () => openPanelById(a.project_id)
+
+        keys.forEach(k => {
+
+            const td = document.createElement("td")
+            const alertVal = a[k]
+
+            td.textContent =
+                (alertVal == null || alertVal === "")
+                ? "—"
+                : alertVal
+
+            tr.appendChild(td)
+        })
+
+        alertsBody.appendChild(tr)
+    })
+}
+
+function renderDueToday(dues){
+    const duesBody = document.getElementById("project-today-body")
+    const dueCount = document.getElementById("project-due-today")
+
+    duesBody.innerHTML = ""
+
+    if (dues.length === 0){
+        dueCount.textContent = ""
+        duesBody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#888;padding:16px">No tasks due today</td></tr>`
+        return
+    }
+
+    dueCount.textContent = `(${dues.length})`
+
+    const keys = Object.keys(dues[0]).filter(k => k !== "project_id")
+
+    dues.forEach(d => {
+
+        const tr = document.createElement("tr")
+        tr.className = "clickable"
+        tr.onclick = () => openPanelById(d.project_id)
+
+        keys.forEach(k => {
+
+            const td = document.createElement("td")
+            const dueVal = d[k]
+
+            td.textContent =
+                (dueVal == null || dueVal === "")
+                ? "—"
+                : dueVal
+
+            tr.appendChild(td)
+        })
+
+        duesBody.appendChild(tr)
+    })
+}
+
 
 // function badgeClass(val) {
 //     if (GREEN_VALUES.includes(val))  return "badge-green"
@@ -324,7 +416,13 @@ async function savePanel() {
     if (activeProject) {
         const res = await fetch(`/api/projects/${encodeURIComponent(activeProject.textContent)}`)
         const rows = await res.json()
+        const alertsRes = await fetch(`/api/alerts/${encodeURIComponent(activeProject.textContent)}`)
+        const alerts=await alertsRes.json()
+        const duesRes = await fetch(`/api/due-today/${encodeURIComponent(activeProject.textContent)}`)
+        const dues=await duesRes.json()
         renderTable(rows)
+        renderAlerts(alerts)
+        renderDueToday(dues)
     }
 
     await loadAlerts();
@@ -340,10 +438,22 @@ function switchTab(tab) {
     document.getElementById("download-excel-tab").style.display="none"
     document.getElementById("due-today-tab").style.display = "none"
     document.getElementById("import-excel-tab").style.display = "none"
+    document.getElementById("project-alerts").style.display="none"
+    document.getElementById("project-alerts-table").style.display="none"
+    document.getElementById("project-today").style.display="none"
+    document.getElementById("project-today-table").style.display="none"
+
 
     if (tab === "tracker") {
         document.getElementById("tab-tracker").style.display = "flex"
         document.querySelector(".tab-btn:first-child").classList.add("active")
+        const hasProject = document.querySelector(".project-item.active")
+        if (hasProject) {
+            document.getElementById("project-alerts").style.display = "flex"
+            document.getElementById("project-alerts-table").style.display = "table"
+            document.getElementById("project-today").style.display = "flex"
+            document.getElementById("project-today-table").style.display = "table"
+        }//only display if a project is active
     } 
     else if(tab=="add-project-tab") {
         document.getElementById("add-project-tab").style.display = "flex"
@@ -465,7 +575,13 @@ async function deleteProject(){
             const refreshRes = await fetch(`/api/projects/${encodeURIComponent(activeProject.textContent)}`)
             //to get active projects
             const rows = await refreshRes.json()
+            const alertsRes = await fetch(`/api/alerts/${encodeURIComponent(activeProject.textContent)}`)
+            const alerts=await alertsRes.json()
+            const duesRes = await fetch(`/api/due-today/${encodeURIComponent(activeProject.textContent)}`)
+            const dues=await duesRes.json()
             renderTable(rows)
+            renderAlerts(alerts)
+            renderDueToday(dues)
         } else {
             document.getElementById("table-head").innerHTML = ""
             document.getElementById("table-body").innerHTML = ""

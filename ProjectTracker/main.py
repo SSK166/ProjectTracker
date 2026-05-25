@@ -15,7 +15,6 @@ STATUS_COLUMNS = [
     "KLD Status",
     "Artwork Status", 
     "Artwork to Vendor Status",
-    "Artwork to Vendor Status 2",
     "Dispatch Status",
     "Cost Closure Status",
     "Project Status",
@@ -84,6 +83,8 @@ def get_project_rows(project_name: str):
         for col in STATUS_COLUMNS:
             row_dict[col] = status_map.get(col, None)
 
+        red_cols=[]
+        yellow_cols=[]
         health = "green"
         TEXT_COLS = ["Dimensions", "Code creation", "Specification", "BOM", "SOP"]
         for col, deadline in deadline_map.items():
@@ -94,15 +95,20 @@ def get_project_rows(project_name: str):
             is_overdue = deadline and today > deadline
 
             if is_overdue and not is_complete:
+                red_cols.append(col)
                 health = "red"
-                break
             elif is_overdue and is_complete:
+                yellow_cols.append(col)
                 health = "yellow"
-
+        row_dict["red_cols"]=red_cols
+        row_dict["yellow_cols"]=yellow_cols
+        print()
         row_dict["_health"] = health
         result.append(row_dict)
 
     conn.close()
+    for pro in result:
+        print(f"Project: {pro["project_name"]} Yellow columns: {pro["yellow_cols"]}")
     return result
 
 @app.get("/api/status/{project_id}")
@@ -139,6 +145,24 @@ def get_alerts():
     conn.close()
     return [dict(row) for row in rows]
 
+@app.get("/api/alerts/{project_name}")
+def get_alerts_for_project(project_name:str):
+    conn = get_conn()
+    today = date.today().isoformat()
+    rows = conn.execute("""
+        SELECT 
+            p.id as project_id, p.project_name, p.packaging_type, p.packaging_option,
+            s.column_name, s.current_value, d.deadline
+        FROM deadlines d
+        JOIN projects p ON p.id = d.project_id
+        JOIN status s ON s.project_id = d.project_id AND s.column_name = d.column_name
+        WHERE d.deadline < ? AND p.project_name=?
+        AND s.current_value NOT IN ('Approved','Closed','Dispatched','Yes','Received')
+        ORDER BY d.deadline ASC
+    """, (today,project_name)).fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
 @app.get("/api/projects/id/{project_id}")
 def get_project_by_id(project_id: int):
     conn = get_conn()
@@ -161,6 +185,24 @@ def get_due_today():
         AND s.current_value NOT IN ('Approved','Closed','Dispatched','Yes','Received')
         ORDER BY p.project_name ASC
     """, (today,)).fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+@app.get("/api/due-today/{project_name}")
+def get_due_today_for_project(project_name:str):
+    conn = get_conn()
+    today = date.today().isoformat()
+    rows = conn.execute("""
+        SELECT 
+            p.id as project_id, p.project_name, p.packaging_type, p.packaging_option,
+            s.column_name, s.current_value, d.deadline
+        FROM deadlines d
+        JOIN projects p ON p.id = d.project_id
+        JOIN status s ON s.project_id = d.project_id AND s.column_name = d.column_name
+        WHERE d.deadline = ? AND p.project_name = ?
+        AND s.current_value NOT IN ('Approved','Closed','Dispatched','Yes','Received')
+        ORDER BY p.project_name ASC
+    """, (today,project_name)).fetchall()
     conn.close()
     return [dict(row) for row in rows]
 
@@ -303,7 +345,6 @@ async def import_excel(file: UploadFile = File(...)):
                 "Project": "project_name",
                 "Packaging Type": "packaging_type",
                 "Packaging Option": "packaging_option",
-                "Unnamed: 8": "Artwork to Vendor Status 2",
                 "Code creation ": "Code creation"
             })
         # else: already in export format with project_name, packaging_type, packaging_option

@@ -29,13 +29,66 @@
                 <div class="main-header">
                     <h1 id="selected-project-name">Select a project</h1>
                 </div>
-                <div class="table-wrapper">
-                    <table id="project-table">
-                        <thead id="table-head"></thead>
-                        <tbody id="table-body"></tbody>
-                    </table>
+
+                <!-- ── 50% : Project rows ── -->
+                <div style="flex:3;min-height:0;display:flex;flex-direction:column;border-bottom:1px solid #ddd">
+                    <div class="table-wrapper" style="flex:1;overflow-y:auto">
+                        <table id="project-table">
+                            <thead id="table-head"></thead>
+                            <tbody id="table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ── 25% : Overdue (per-project) ── -->
+                <div id="project-alerts" style="flex:2;min-height:0;display:flex;flex-direction:column;border-bottom:1px solid #ddd">
+                    <div class="main-header" style="padding:6px 16px;flex-shrink:0">
+                        <h1 style="font-size:15px;margin:0">
+                            Overdue <span id="projects-alert-count"></span>
+                        </h1>
+                    </div>
+                    <div class="table-wrapper" style="flex:1;overflow-y:auto">
+                        <table id="project-alerts-table">
+                            <thead>
+                                <tr>
+                                    <th>Project</th>
+                                    <th>Packaging</th>
+                                    <th>Option</th>
+                                    <th>Status Field</th>
+                                    <th>Current Value</th>
+                                    <th>Deadline</th>
+                                </tr>
+                            </thead>
+                            <tbody id="project-alerts-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ── 25% : Due Today (per-project) ── -->
+                <div id="project-today" style="flex:2;min-height:0;display:flex;flex-direction:column">
+                    <div class="main-header" style="padding:6px 16px;flex-shrink:0">
+                        <h1 style="font-size:15px;margin:0">
+                            Due Today <span id="project-due-today"></span>
+                        </h1>
+                    </div>
+                    <div class="table-wrapper" style="flex:1;overflow-y:auto">
+                        <table id="project-today-table">
+                            <thead>
+                                <tr>
+                                    <th>Project</th>
+                                    <th>Packaging</th>
+                                    <th>Option</th>
+                                    <th>Status Field</th>
+                                    <th>Current Value</th>
+                                    <th>Deadline</th>
+                                </tr>
+                            </thead>
+                            <tbody id="project-today-body"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
+            
 
             <div id="tab-alerts" style="display:none;flex-direction:column;flex:1;overflow:hidden">
                 <div class="main-header">
