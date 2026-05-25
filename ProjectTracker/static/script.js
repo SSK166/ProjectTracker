@@ -71,6 +71,15 @@ const RED_VALUES = ["Rejected", "Delayed", "Correction", "Not Received"]
 let currentRowId = null
 let currentProjectRows = []
 
+//for search matching
+function normalize(str) {
+    return str
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+}
+
 async function loadProjects() {
     const res = await fetch("/api/projects")
     const projects = await res.json()
@@ -112,11 +121,12 @@ async function loadProjects() {
     })
     
     const performSearch = () => {
-        const filter = searchBox.value.toLowerCase()
+        const filter = normalize(searchBox.value)
         let matchedProject = null
 
         projectElements.forEach(item => {
-            if (item.name.includes(filter)) {
+            const normname=normalize(item.name)
+            if (normname.includes(filter)) {
                 item.element.style.display = "" // Show it
                 if (!matchedProject) {
                     matchedProject = item 
@@ -139,19 +149,14 @@ async function selectProject(name, el) {
     // highlight active
     document.querySelectorAll(".project-item").forEach(i => i.classList.remove("active"))
     el.classList.add("active")
-
-    console.log(name)
     document.getElementById("selected-project-name").textContent = name
 
     const res = await fetch(`/api/projects/${encodeURIComponent(name)}`)
     const rows = await res.json()
     const alertsProject=await fetch(`/api/alerts/${encodeURIComponent(name)}`)
     const alerts=await alertsProject.json()
-    // console.log(`From selectProject ${alerts.length}`)
-    // console.log(`Rows:${JSON.stringify(rows)}`)
     const dueRes=await fetch(`api/due-today/${encodeURIComponent(name)}`)
     const dues=await dueRes.json()
-    console.log(`From selectProject ${dues.length}`)
     currentProjectRows = rows
     //to make the alerts and due today for the projects visible on selection
     document.getElementById("project-alerts").style.display = "flex"
