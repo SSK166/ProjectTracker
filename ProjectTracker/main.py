@@ -1,19 +1,21 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Body, File, UploadFile
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
-import sqlite3
-import pandas as pd
-from fastapi import Body
-import os
-from datetime import date 
 from fastapi.responses import FileResponse
-from fastapi import File, UploadFile
+import psycopg2
+import psycopg2.extras
+import pandas as pd
+import os
 import tempfile
+from datetime import date
+from dotenv import load_dotenv
+
+load_dotenv()
 
 STATUS_COLUMNS = [
     "KLD Status",
-    "Artwork Status", 
+    "Artwork Status",
     "Artwork to Vendor Status",
     "Dispatch Status",
     "Cost Closure Status",
@@ -27,21 +29,22 @@ STATUS_COLUMNS = [
     "SOP"
 ]
 
-BASE_COLUMNS = ["project_name", "packaging_type", "packaging_option"]
-
 app = FastAPI()
-print("Running from:", os.getcwd())
-print("DB PATH:", os.path.join(os.path.dirname(__file__), "projects.db"))
-
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "projects.db")
-
 def get_conn():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return psycopg2.connect(
+        host=os.getenv("DB_HOST"),
+        port=os.getenv("DB_PORT"),
+        dbname=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD")
+    )
+
+def dict_cursor(conn):
+    # psycopg2 equivalent of sqlite3's row_factory
+    return conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
 @app.get("/")
 def index(request: Request):
@@ -50,43 +53,46 @@ def index(request: Request):
 @app.get("/api/projects")
 def get_projects():
     conn = get_conn()
-    rows = conn.execute("SELECT DISTINCT project_name FROM projects").fetchall()
+    cur = dict_cursor(conn)
+    cur.execute("SELECT project_name,MIN(id) FROM projects GROUP BY project_name ORDER BY MIN(id) ASC")
+    rows = cur.fetchall()
+    cur.close()
     conn.close()
     return [row["project_name"] for row in rows]
 
 @app.get("/api/projects/{project_name}")
 def get_project_rows(project_name: str):
     conn = get_conn()
-    rows = conn.execute("""
+    cur = dict_cursor(conn)
+    cur.execute("""
         SELECT p.id, p.project_name, p.packaging_type, p.packaging_option
-        FROM projects p WHERE p.project_name = ?
-    """, (project_name,)).fetchall()
+        FROM projects p WHERE p.project_name = %s ORDER BY p.id ASC
+    """, (project_name,))
+    rows = cur.fetchall()
 
     result = []
     today = date.today().isoformat()
+    TEXT_COLS = ["Dimensions", "Code creation", "Specification", "BOM", "SOP"]
 
     for row in rows:
         row_dict = dict(row)
         project_id = row_dict["id"]
 
-        statuses = conn.execute("""
-            SELECT column_name, current_value FROM status WHERE project_id = ?
-        """, (project_id,)).fetchall()
+        cur.execute("SELECT column_name, current_value FROM status WHERE project_id = %s", (project_id,))
+        statuses = cur.fetchall()
 
-        deadlines = conn.execute("""
-            SELECT column_name, deadline FROM deadlines WHERE project_id = ?
-        """, (project_id,)).fetchall()
+        cur.execute("SELECT column_name, deadline FROM deadlines WHERE project_id = %s", (project_id,))
+        deadlines = cur.fetchall()
 
         status_map = {s["column_name"].strip(): s["current_value"] for s in statuses}
-        deadline_map = {d["column_name"].strip(): d["deadline"] for d in deadlines}
+        deadline_map = {d["column_name"].strip(): str(d["deadline"]) for d in deadlines}
+        # str() needed — psycopg2 returns deadline as a Python date object, not string
 
         for col in STATUS_COLUMNS:
             row_dict[col] = status_map.get(col, None)
 
-        red_cols=[]
-        yellow_cols=[]
-        health = "green"
-        TEXT_COLS = ["Dimensions", "Code creation", "Specification", "BOM", "SOP"]
+        red_cols = []
+        yellow_cols = []
         for col, deadline in deadline_map.items():
             if col in TEXT_COLS:
                 continue
@@ -96,227 +102,246 @@ def get_project_rows(project_name: str):
 
             if is_overdue and not is_complete:
                 red_cols.append(col)
-                health = "red"
             elif is_overdue and is_complete:
                 yellow_cols.append(col)
-                health = "yellow"
-        row_dict["red_cols"]=red_cols
-        row_dict["yellow_cols"]=yellow_cols
-        print()
-        row_dict["_health"] = health
+
+        row_dict["red_cols"] = red_cols
+        row_dict["yellow_cols"] = yellow_cols
+        row_dict["_health"] = "green"
         result.append(row_dict)
 
+    cur.close()
     conn.close()
     return result
 
 @app.get("/api/status/{project_id}")
 def get_status(project_id: int):
     conn = get_conn()
-    rows = conn.execute("SELECT * FROM status WHERE project_id = ?", (project_id,)).fetchall()
+    cur = dict_cursor(conn)
+    cur.execute("SELECT * FROM status WHERE project_id = %s", (project_id,))
+    rows = cur.fetchall()
+    cur.close()
     conn.close()
     return [dict(row) for row in rows]
 
 @app.get("/api/deadlines/{project_id}")
 def get_deadlines(project_id: int):
     conn = get_conn()
-    selected = conn.execute("""
-        SELECT column_name, deadline FROM deadlines WHERE project_id = ?
-    """, (project_id,)).fetchall()
+    cur = dict_cursor(conn)
+    cur.execute("SELECT column_name, deadline FROM deadlines WHERE project_id = %s", (project_id,))
+    rows = cur.fetchall()
+    cur.close()
     conn.close()
-    return [dict(row) for row in selected]
+    # Convert date objects to strings for JSON serialisation
+    return [{"column_name": r["column_name"], "deadline": str(r["deadline"]) if r["deadline"] else ""} for r in rows]
 
 @app.get("/api/alerts")
 def get_alerts():
     conn = get_conn()
+    cur = dict_cursor(conn)
     today = date.today().isoformat()
-    rows = conn.execute("""
-        SELECT 
-            p.id as project_id, p.project_name, p.packaging_type, p.packaging_option,
-            s.column_name, s.current_value, d.deadline
+    cur.execute("""
+        SELECT p.id as project_id, p.project_name, p.packaging_type, p.packaging_option,
+               s.column_name, s.current_value, d.deadline
         FROM deadlines d
         JOIN projects p ON p.id = d.project_id
         JOIN status s ON s.project_id = d.project_id AND s.column_name = d.column_name
-        WHERE d.deadline < ?
+        WHERE d.deadline < %s
         AND s.current_value NOT IN ('Approved','Closed','Dispatched','Yes','Received')
         ORDER BY d.deadline ASC
-    """, (today,)).fetchall()
+    """, (today,))
+    rows = cur.fetchall()
+    cur.close()
     conn.close()
-    return [dict(row) for row in rows]
+    return [dict(r) | {"deadline": str(r["deadline"])} for r in rows]
 
 @app.get("/api/alerts/{project_name}")
-def get_alerts_for_project(project_name:str):
+def get_alerts_for_project(project_name: str):
     conn = get_conn()
+    cur = dict_cursor(conn)
     today = date.today().isoformat()
-    rows = conn.execute("""
-        SELECT 
-            p.id as project_id, p.project_name, p.packaging_type, p.packaging_option,
-            s.column_name, s.current_value, d.deadline
+    cur.execute("""
+        SELECT p.id as project_id, p.project_name, p.packaging_type, p.packaging_option,
+               s.column_name, s.current_value, d.deadline
         FROM deadlines d
         JOIN projects p ON p.id = d.project_id
         JOIN status s ON s.project_id = d.project_id AND s.column_name = d.column_name
-        WHERE d.deadline < ? AND p.project_name=?
+        WHERE d.deadline < %s AND p.project_name = %s
         AND s.current_value NOT IN ('Approved','Closed','Dispatched','Yes','Received')
         ORDER BY d.deadline ASC
-    """, (today,project_name)).fetchall()
+    """, (today, project_name))
+    rows = cur.fetchall()
+    cur.close()
     conn.close()
-    return [dict(row) for row in rows]
+    return [dict(r) | {"deadline": str(r["deadline"])} for r in rows]
 
 @app.get("/api/projects/id/{project_id}")
 def get_project_by_id(project_id: int):
     conn = get_conn()
-    row = conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
+    cur = dict_cursor(conn)
+    cur.execute("SELECT * FROM projects WHERE id = %s", (project_id,))
+    row = cur.fetchone()
+    cur.close()
     conn.close()
     return dict(row)
 
 @app.get("/api/due-today")
 def get_due_today():
     conn = get_conn()
+    cur = dict_cursor(conn)
     today = date.today().isoformat()
-    rows = conn.execute("""
-        SELECT 
-            p.id as project_id, p.project_name, p.packaging_type, p.packaging_option,
-            s.column_name, s.current_value, d.deadline
+    cur.execute("""
+        SELECT p.id as project_id, p.project_name, p.packaging_type, p.packaging_option,
+               s.column_name, s.current_value, d.deadline
         FROM deadlines d
         JOIN projects p ON p.id = d.project_id
         JOIN status s ON s.project_id = d.project_id AND s.column_name = d.column_name
-        WHERE d.deadline = ?
+        WHERE d.deadline = %s
         AND s.current_value NOT IN ('Approved','Closed','Dispatched','Yes','Received')
         ORDER BY p.project_name ASC
-    """, (today,)).fetchall()
+    """, (today,))
+    rows = cur.fetchall()
+    cur.close()
     conn.close()
-    return [dict(row) for row in rows]
+    return [dict(r) | {"deadline": str(r["deadline"])} for r in rows]
 
 @app.get("/api/due-today/{project_name}")
-def get_due_today_for_project(project_name:str):
+def get_due_today_for_project(project_name: str):
     conn = get_conn()
+    cur = dict_cursor(conn)
     today = date.today().isoformat()
-    rows = conn.execute("""
-        SELECT 
-            p.id as project_id, p.project_name, p.packaging_type, p.packaging_option,
-            s.column_name, s.current_value, d.deadline
+    cur.execute("""
+        SELECT p.id as project_id, p.project_name, p.packaging_type, p.packaging_option,
+               s.column_name, s.current_value, d.deadline
         FROM deadlines d
         JOIN projects p ON p.id = d.project_id
         JOIN status s ON s.project_id = d.project_id AND s.column_name = d.column_name
-        WHERE d.deadline = ? AND p.project_name = ?
+        WHERE d.deadline = %s AND p.project_name = %s
         AND s.current_value NOT IN ('Approved','Closed','Dispatched','Yes','Received')
         ORDER BY p.project_name ASC
-    """, (today,project_name)).fetchall()
+    """, (today, project_name))
+    rows = cur.fetchall()
+    cur.close()
     conn.close()
-    return [dict(row) for row in rows]
+    return [dict(r) | {"deadline": str(r["deadline"])} for r in rows]
 
 @app.put("/api/status/{project_id}")
 def update_status(project_id: int, data: dict = Body(...)):
     conn = get_conn()
+    cur = conn.cursor()
     today = date.today().isoformat()
     GREEN_VALUES = ["Approved", "Closed", "Dispatched", "Yes", "Received"]
 
     for col, value in data.items():
         completion_date = today if value in GREEN_VALUES else None
-        conn.execute("""
+        cur.execute("""
             INSERT INTO status (project_id, column_name, current_value, completion_date)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(project_id, column_name) DO UPDATE SET 
-                current_value = ?,
-                completion_date = CASE 
-                    WHEN ? IN ('Approved','Closed','Dispatched','Yes','Received') 
-                    THEN COALESCE(completion_date, ?)
-                    ELSE NULL 
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT(project_id, column_name) DO UPDATE SET
+                current_value = EXCLUDED.current_value,
+                completion_date = CASE
+                    WHEN EXCLUDED.current_value IN ('Approved','Closed','Dispatched','Yes','Received')
+                    THEN COALESCE(status.completion_date, EXCLUDED.completion_date)
+                    ELSE NULL
                 END
-        """, (project_id, col, value, completion_date, value, value, today))
+        """, (project_id, col, value, completion_date))
+    # Note: PostgreSQL ON CONFLICT syntax uses EXCLUDED.column instead of bare values
 
     conn.commit()
+    cur.close()
     conn.close()
     return {"status": "ok"}
 
 @app.post("/api/deadlines/{project_id}")
 def save_deadlines(project_id: int, data: dict = Body(...)):
     conn = get_conn()
+    cur = conn.cursor()
     for col, deadline in data.items():
         if deadline:
-            conn.execute("""
+            cur.execute("""
                 INSERT INTO deadlines (project_id, column_name, deadline)
-                VALUES (?, ?, ?)
-                ON CONFLICT(project_id, column_name) DO UPDATE SET deadline = ?
-            """, (project_id, col, deadline, deadline))
+                VALUES (%s, %s, %s)
+                ON CONFLICT(project_id, column_name) DO UPDATE SET deadline = EXCLUDED.deadline
+            """, (project_id, col, deadline))
     conn.commit()
+    cur.close()
     conn.close()
     return {"status": "ok"}
 
 @app.post("/api/projects")
 def add_project(data: dict = Body(...)):
     conn = get_conn()
-    cursor = conn.cursor()
-    cursor.execute("""
+    cur = conn.cursor()
+    cur.execute("""
         INSERT INTO projects (project_name, packaging_type, packaging_option)
-        VALUES (?, ?, ?)
+        VALUES (%s, %s, %s) RETURNING id
     """, (data["project_name"], data["packaging_type"], data["packaging_option"]))
-    project_id = cursor.lastrowid
+    project_id = cur.fetchone()[0]
     for col in STATUS_COLUMNS:
-        cursor.execute("""
+        cur.execute("""
             INSERT INTO status (project_id, column_name, current_value)
-            VALUES (?, ?, NULL)
+            VALUES (%s, %s, NULL)
         """, (project_id, col))
     conn.commit()
+    cur.close()
     conn.close()
     return {"status": "ok"}
 
 @app.delete("/api/projects/{project_id}")
 def delete_project(project_id: int):
     conn = get_conn()
-    conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
-    conn.execute("DELETE FROM status WHERE project_id = ?", (project_id,))
-    conn.execute("DELETE FROM deadlines WHERE project_id = ?", (project_id,))
+    cur = conn.cursor()
+    cur.execute("DELETE FROM projects WHERE id = %s", (project_id,))
+    cur.execute("DELETE FROM status WHERE project_id = %s", (project_id,))
+    cur.execute("DELETE FROM deadlines WHERE project_id = %s", (project_id,))
     conn.commit()
+    cur.close()
     conn.close()
     return {"status": "ok"}
 
 @app.get("/api/download/{excel_name}")
 def download_excel(excel_name: str):
     conn = get_conn()
-    projects = get_projects()
+    cur = dict_cursor(conn)
+    cur.execute("SELECT DISTINCT project_name FROM projects")
+    projects = [r["project_name"] for r in cur.fetchall()]
     all_rows = []
 
     for project in projects:
-        rows = conn.execute("""
+        cur.execute("""
             SELECT p.id, p.project_name, p.packaging_type, p.packaging_option
-            FROM projects p WHERE p.project_name = ?
-        """, (project,)).fetchall()
+            FROM projects p WHERE p.project_name = %s
+        """, (project,))
+        rows = cur.fetchall()
 
         for row in rows:
-            row_dict = dict(row)
-            project_id = row_dict["id"]
-
-            statuses = conn.execute(
-                "SELECT column_name, current_value, completion_date FROM status WHERE project_id = ?",
-                (project_id,)
-            ).fetchall()
-            deadlines = conn.execute(
-                "SELECT column_name, deadline FROM deadlines WHERE project_id = ?",
-                (project_id,)
-            ).fetchall()
+            project_id = row["id"]
+            cur.execute("SELECT column_name, current_value, completion_date FROM status WHERE project_id = %s", (project_id,))
+            statuses = cur.fetchall()
+            cur.execute("SELECT column_name, deadline FROM deadlines WHERE project_id = %s", (project_id,))
+            deadlines = cur.fetchall()
 
             status_map = {s["column_name"]: s["current_value"] for s in statuses}
-            completion_map = {s["column_name"]: s["completion_date"] for s in statuses}
-            deadline_map = {d["column_name"]: d["deadline"] for d in deadlines}
+            completion_map = {s["column_name"]: str(s["completion_date"]) if s["completion_date"] else None for s in statuses}
+            deadline_map = {d["column_name"]: str(d["deadline"]) if d["deadline"] else None for d in deadlines}
 
             flat = {
-                "project_name": row_dict["project_name"],
-                "packaging_type": row_dict["packaging_type"],
-                "packaging_option": row_dict["packaging_option"],
+                "project_name": row["project_name"],
+                "packaging_type": row["packaging_type"],
+                "packaging_option": row["packaging_option"],
             }
             for col in STATUS_COLUMNS:
                 flat[col] = status_map.get(col)
                 flat[col + " | Deadline"] = deadline_map.get(col)
                 flat[col + " | Completed On"] = completion_map.get(col)
-
             all_rows.append(flat)
 
+    cur.close()
     conn.close()
 
     df = pd.DataFrame(all_rows)
     file_path = f"{excel_name}.xlsx"
-    df.to_excel(file_path, index=False, sheet_name="Project Tracker")  # fixed: named sheet
-
+    df.to_excel(file_path, index=False, sheet_name="Project Tracker")
     return FileResponse(
         path=file_path,
         filename=f"{excel_name}.xlsx",
@@ -334,59 +359,53 @@ async def import_excel(file: UploadFile = File(...)):
         xl = pd.ExcelFile(tmp_path)
         sheet = "Project Tracker" if "Project Tracker" in xl.sheet_names else xl.sheet_names[0]
         df = xl.parse(sheet_name=sheet)
-        xl.close()  # release file handle before finally
+        xl.close()
 
-        # Detect format: original Excel uses "Project", export uses "project_name"
         if "Project" in df.columns:
-            # Original Excel format
             df = df.rename(columns={
                 "Project": "project_name",
                 "Packaging Type": "packaging_type",
                 "Packaging Option": "packaging_option",
                 "Code creation ": "Code creation"
             })
-        # else: already in export format with project_name, packaging_type, packaging_option
 
         df["project_name"] = df["project_name"].ffill()
         df["Code creation"] = df["Code creation"].apply(
             lambda x: str(int(x)) if pd.notna(x) else None
         )
+
         conn = get_conn()
-        cursor = conn.cursor()
+        cur = conn.cursor()
         rows_imported = 0
         GREEN_VALUES = ["Approved", "Closed", "Dispatched", "Yes", "Received"]
 
         for _, row in df.iterrows():
-            cursor.execute("""
+            cur.execute("""
                 INSERT INTO projects (project_name, packaging_type, packaging_option)
-                VALUES (?, ?, ?)
-            """, (
-                row.get("project_name"),      # fixed: was row.get("Project")
-                row.get("packaging_type"),    # fixed: was row.get("Packaging Type")
-                row.get("packaging_option")   # fixed: was row.get("Packaging Option")
-            ))
-            project_id = cursor.lastrowid
+                VALUES (%s, %s, %s) RETURNING id
+            """, (row.get("project_name"), row.get("packaging_type"), row.get("packaging_option")))
+            project_id = cur.fetchone()[0]
 
             for col in STATUS_COLUMNS:
                 value = row.get(col)
                 value = str(value) if pd.notna(value) else None
 
-                completion_col = col + " | Completed On"
                 completion_date = None
+                completion_col = col + " | Completed On"
                 if completion_col in df.columns:
                     raw = row.get(completion_col)
                     if pd.notna(raw):
                         try:
                             completion_date = pd.to_datetime(raw).date().isoformat()
                         except Exception:
-                            completion_date = None
+                            pass
 
                 if completion_date is None and value in GREEN_VALUES:
                     completion_date = date.today().isoformat()
 
-                cursor.execute("""
+                cur.execute("""
                     INSERT INTO status (project_id, column_name, current_value, completion_date)
-                    VALUES (?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s)
                 """, (project_id, col, value, completion_date))
 
                 deadline_col = col + " | Deadline"
@@ -395,17 +414,18 @@ async def import_excel(file: UploadFile = File(...)):
                     if pd.notna(raw_deadline):
                         try:
                             deadline_str = pd.to_datetime(raw_deadline).date().isoformat()
-                            cursor.execute("""
+                            cur.execute("""
                                 INSERT INTO deadlines (project_id, column_name, deadline)
-                                VALUES (?, ?, ?)
-                                ON CONFLICT(project_id, column_name) DO UPDATE SET deadline = ?
-                            """, (project_id, col, deadline_str, deadline_str))
+                                VALUES (%s, %s, %s)
+                                ON CONFLICT(project_id, column_name) DO UPDATE SET deadline = EXCLUDED.deadline
+                            """, (project_id, col, deadline_str))
                         except Exception:
                             pass
 
             rows_imported += 1
 
         conn.commit()
+        cur.close()
         conn.close()
 
     finally:
