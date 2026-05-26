@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Tracker</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="/static/images/yogabar.png">
+    <!-- images must be within static folder -->
+</head>
+<body>
+
+    <div class="app">
+
+        <div class="sidebar">
+            <h2>Projects</h2>
+            <div id="project-list"></div>
+        </div>
+
+        <div class="main">
+            <div class="tab-bar">
+                <button class="tab-btn active" onclick="switchTab('tracker')">Project Tracker</button>
+                <button class="tab-btn" onclick="switchTab('add-project-tab')">Add Project</button>
+                <button class="tab-btn" onclick="switchTab('download-excel-tab')">Download Excel</button>
+                <button class="tab-btn" onclick="switchTab('alerts')">Alerts <span id="overdue-count-btn"></span></button>
+                <button class="tab-btn" onclick="switchTab('due-today-tab')">Due Today <span id="due-today-count-btn"></span></button>
+                <button class="tab-btn" onclick="switchTab('import-excel-tab')">Import Excel</button>
+            </div>
+
+            <div id="tab-tracker" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+                <div class="main-header">
+                    <h1 id="selected-project-name">Select a project</h1>
+                </div>
+
+                <!-- ── 50% : Project rows ── -->
+                <div style="flex:3;min-height:0;display:flex;flex-direction:column;border-bottom:1px solid #ddd">
+                    <div class="table-wrapper" style="flex:1;overflow-y:auto">
+                        <table id="project-table">
+                            <thead id="table-head"></thead>
+                            <tbody id="table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ── 25% : Overdue (per-project) ── -->
+                <div id="project-alerts" style="flex:2;min-height:0;display:flex;flex-direction:column;border-bottom:1px solid #ddd">
+                    <div class="main-header" style="padding:6px 16px;flex-shrink:0">
+                        <h1 style="font-size:15px;margin:0">
+                            Overdue <span id="projects-alert-count"></span>
+                        </h1>
+                    </div>
+                    <div class="table-wrapper" style="flex:1;overflow-y:auto">
+                        <table id="project-alerts-table">
+                            <thead>
+                                <tr>
+                                    <th>Project</th>
+                                    <th>Packaging</th>
+                                    <th>Option</th>
+                                    <th>Status Field</th>
+                                    <th>Current Value</th>
+                                    <th>Deadline</th>
+                                </tr>
+                            </thead>
+                            <tbody id="project-alerts-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ── 25% : Due Today (per-project) ── -->
+                <div id="project-today" style="flex:2;min-height:0;display:flex;flex-direction:column">
+                    <div class="main-header" style="padding:6px 16px;flex-shrink:0">
+                        <h1 style="font-size:15px;margin:0">
+                            Due Today <span id="project-due-today"></span>
+                        </h1>
+                    </div>
+                    <div class="table-wrapper" style="flex:1;overflow-y:auto">
+                        <table id="project-today-table">
+                            <thead>
+                                <tr>
+                                    <th>Project</th>
+                                    <th>Packaging</th>
+                                    <th>Option</th>
+                                    <th>Status Field</th>
+                                    <th>Current Value</th>
+                                    <th>Deadline</th>
+                                </tr>
+                            </thead>
+                            <tbody id="project-today-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+
+            <div id="tab-alerts" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+                <div class="main-header">
+                    <h1>Overdue Items <span id="overdue-count"></span></h1>
+                </div>
+                <div class="table-wrapper">
+                    <table id="alerts-table">
+                        <thead>
+                            <tr>
+                                <th>Project</th>
+                                <th>Packaging</th>
+                                <th>Option</th>
+                                <th>Status Field</th>
+                                <th>Current Value</th>
+                                <th>Deadline</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alerts-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="add-project-tab" id="add-project-tab" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+                <div class="main-header">
+                    <h1>Enter Project Details</h1>
+                </div>
+                <div class="add-project-ip">
+                    <label class="add-label" for="new-project-name">Project Name</label>
+                    <input class="add-ip" type="text" id="new-project-name" placeholder="Project Name">
+
+                    <label class="add-label" for="new-packaging-type">Packaging Type</label>
+                    <input class="add-ip" type="text" id="new-packaging-type" placeholder="Packaging Type">
+
+                    <label class="add-label" for="new-packaging-option">Packaging Option</label>
+                    <input class="add-ip" type="text" id="new-packaging-option" placeholder="Packaging Option">
+                </div>
+
+                <button class="add-project-btn" onclick="addProject()">Add Project</button>
+            </div>
+
+            <div class="download-excel-tab" id="download-excel-tab" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+                <div class="main-header">
+                    <h1>Download Spreadsheet</h1>
+                </div>
+
+                <div class="download-form">
+                    <label class="download-label" for="file-name">Spreadsheet Name</label>
+                    <input class="download-input" type="text" id="file-name" placeholder="Spreadsheet Name">
+
+                    <button class="download-btn" onclick="downloadExcel()">Download Excel</button>
+                </div>
+            </div>
+            <div class="due-today-tab" id="due-today-tab" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+                <div class="main-header">
+                    <h1>Due Today <span id="due-today-count"></span></h1>
+                </div>
+                <div class="table-wrapper">
+                    <table id="due-today-table">
+                        <thead>
+                            <tr>
+                                <th>Project</th>
+                                <th>Packaging</th>
+                                <th>Option</th>
+                                <th>Status Field</th>
+                                <th>Current Value</th>
+                                <th>Deadline</th>
+                            </tr>
+                        </thead>
+                        <tbody id="due-today-body"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="import-excel-tab" id="import-excel-tab" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+                <div class="main-header">
+                    <h1>Import Spreadsheet</h1>
+                </div>
+
+                <div class="import-form">
+                    <label class="import-label" for="import-file">Select Excel File</label>
+                    <input class="import-input" type="file" id="import-file" accept=".xlsx,.xls">
+                    <button class="import-btn" onclick="importExcel()">Import Excel</button>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="panel" id="side-panel">
+            <div class="panel-header">
+                <h3 id="panel-title">Row Details</h3>
+                <button class="close-btn" onclick="closePanel()">✕</button>
+            </div>
+            <div class="panel-body" id="panel-body"></div>
+            <div class="panel-footer" style="display:flex; flex-direction:column; gap:10px;">
+                <button class="save-btn" onclick="savePanel()">Save Changes</button>
+                <button class="delete-btn" onclick="deleteProject()">Delete Project</button>
+            </div>
+        </div>
+
+        <div class="overlay" id="overlay" onclick="closePanel()"></div>
+
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
