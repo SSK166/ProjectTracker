@@ -107,8 +107,6 @@ def get_project_rows(project_name: str):
         result.append(row_dict)
 
     conn.close()
-    for pro in result:
-        print(f"Project: {pro["project_name"]} Yellow columns: {pro["yellow_cols"]}")
     return result
 
 @app.get("/api/status/{project_id}")
