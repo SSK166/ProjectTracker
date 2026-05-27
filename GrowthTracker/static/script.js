@@ -142,15 +142,26 @@ function isFullyGreen(row) {
     return val != null && val.trim().toLowerCase() === "completed"
 }
 
+function toTitleCase(str) {
+    if (str == null || str === "") return str
+    str = String(str)  // coerce numbers etc. to string
+    return str.split(' ').filter(s => s !== '').map(s => {
+        if (s === s.toUpperCase()) return s  // preserve fully caps words like "KLD"
+        return s[0].toUpperCase() + s.slice(1).toLowerCase()
+    }).join(" ")
+}
+
+
 function renderTable(rows) {
     if (rows.length === 0) return
-
     // Build headers from first row keys
     const allKeys = Object.keys(rows[0]).filter(k=>k!="_health" && k!="red_cols" && k!="yellow_cols")
     const head = document.getElementById("table-head")
     const body = document.getElementById("table-body")
     head.innerHTML = `<tr>${allKeys.map(k => `<th>${k}</th>`).join("")}</tr>`
     body.innerHTML = ""
+    
+    const TOT_COLS = new Set(STATUS_COLS.concat(FREE_TEXT_COLS))
 
     rows.forEach(row => {
         const tr = document.createElement("tr")
@@ -167,7 +178,9 @@ function renderTable(rows) {
             if(row.yellow_cols && row.yellow_cols.includes(key)){
                 td.style.backgroundColor="#ffed69"
             }
-            td.textContent = (val==null || val==="") ? "—":val
+            const display = (val == null || val === "") ? "—" : val
+            td.textContent = TOT_COLS.has(key) ? toTitleCase(String(display)) : display
+
             tr.appendChild(td)
         })
 

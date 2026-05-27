@@ -80,7 +80,8 @@ def import_from_excel():
     cursor = conn.cursor()
 
     df = pd.read_excel(EXCEL_PATH, sheet_name="Sheet1")
-    df = df.rename(columns={"Project Description": "Project","KLD ":"KLD Status","Artwork":"Artwork Status","Sampling":"Sampling Status","Commercial ordering":"Commercial Ordering Status","Connectivity":"Connectivity Status","Status":"Project Status"})
+    df.columns=df.columns.str.strip()
+    df = df.rename(columns={"Project Description": "Project","KLD":"KLD Status","Artwork":"Artwork Status","Sampling":"Sampling Status","Commercial Ordering":"Commercial Ordering Status","Connectivity":"Connectivity Status","Status":"Project Status"})
     df["Project"] = df["Project"].ffill()
 
     for _, row in df.iterrows():

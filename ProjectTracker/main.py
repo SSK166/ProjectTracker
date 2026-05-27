@@ -60,6 +60,16 @@ def get_projects():
     conn.close()
     return [row["project_name"] for row in rows]
 
+@app.get("/api/projects/id/{project_id}")
+def get_project_by_id(project_id: int):
+    conn = get_conn()
+    cur = dict_cursor(conn)
+    cur.execute("SELECT * FROM projects WHERE id = %s", (project_id,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    return dict(row)
+
 @app.get("/api/projects/{project_name}")
 def get_project_rows(project_name: str):
     conn = get_conn()
@@ -85,7 +95,8 @@ def get_project_rows(project_name: str):
         deadlines = cur.fetchall()
 
         status_map = {s["column_name"].strip(): s["current_value"] for s in statuses}
-        deadline_map = {d["column_name"].strip(): str(d["deadline"]) for d in deadlines}
+        deadline_map = {d["column_name"].strip(): (str(d["deadline"]) if d["deadline"] is not None else None) 
+                        for d in deadlines}
         # str() needed — psycopg2 returns deadline as a Python date object, not string
 
         for col in STATUS_COLUMNS:
@@ -147,7 +158,7 @@ def get_alerts():
         JOIN projects p ON p.id = d.project_id
         JOIN status s ON s.project_id = d.project_id AND s.column_name = d.column_name
         WHERE d.deadline < %s
-        AND s.current_value NOT IN ('Approved','Closed','Dispatched','Yes','Received')
+        AND s.current_value IS NULL OR s.current_value NOT IN ('Approved','Closed','Dispatched','Yes','Received')
         ORDER BY d.deadline ASC
     """, (today,))
     rows = cur.fetchall()
@@ -175,15 +186,7 @@ def get_alerts_for_project(project_name: str):
     conn.close()
     return [dict(r) | {"deadline": str(r["deadline"])} for r in rows]
 
-@app.get("/api/projects/id/{project_id}")
-def get_project_by_id(project_id: int):
-    conn = get_conn()
-    cur = dict_cursor(conn)
-    cur.execute("SELECT * FROM projects WHERE id = %s", (project_id,))
-    row = cur.fetchone()
-    cur.close()
-    conn.close()
-    return dict(row)
+
 
 @app.get("/api/due-today")
 def get_due_today():
@@ -303,7 +306,7 @@ def delete_project(project_id: int):
 def download_excel(excel_name: str):
     conn = get_conn()
     cur = dict_cursor(conn)
-    cur.execute("SELECT DISTINCT project_name FROM projects")
+    cur.execute("SELECT DISTINCT project_name,MIN(id) FROM projects GROUP BY project_name ORDER BY MIN(id) ASC")
     projects = [r["project_name"] for r in cur.fetchall()]
     all_rows = []
 
