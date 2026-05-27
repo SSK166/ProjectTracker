@@ -81,7 +81,7 @@ function normalize(str) {
 }
 
 async function loadProjects() {
-    const res = await fetch("/api/projects")
+    const res = await fetch("/track/api/projects")
     const projects = await res.json()
 
     const list = document.getElementById("project-list")
@@ -151,11 +151,11 @@ async function selectProject(name, el) {
     el.classList.add("active")
     document.getElementById("selected-project-name").textContent = name
 
-    const res = await fetch(`/api/projects/${encodeURIComponent(name)}`)
+    const res = await fetch(`/track/api/projects/${encodeURIComponent(name)}`)
     const rows = await res.json()
-    const alertsProject=await fetch(`/api/alerts/${encodeURIComponent(name)}`)
+    const alertsProject=await fetch(`/track/api/alerts/${encodeURIComponent(name)}`)
     const alerts=await alertsProject.json()
-    const dueRes=await fetch(`api/due-today/${encodeURIComponent(name)}`)
+    const dueRes=await fetch(`/track/api/due-today/${encodeURIComponent(name)}`)
     const dues=await dueRes.json()
     currentProjectRows = rows
     //to make the alerts and due today for the projects visible on selection
@@ -188,6 +188,7 @@ function renderTable(rows) {
         tr.className = "clickable"
         tr.onclick = () => openPanel(row)
         const fullyGreen=isFullyGreen(row)
+        console.log(`Is row ${row} fully green ${isFullyGreen(row)}`)
         if(fullyGreen) tr.style.backgroundColor="#7bff8f"
         allKeys.forEach(key => {
             const td = document.createElement("td")
@@ -300,8 +301,8 @@ async function openPanel(row) {
 
     // fetch status and deadlines
     const [statusRes, deadlineRes] = await Promise.all([
-        fetch(`/api/status/${row.id}`),
-        fetch(`/api/deadlines/${row.id}`)
+        fetch(`/track/api/status/${row.id}`),
+        fetch(`/track/api/deadlines/${row.id}`)
     ])
     const statusData = await statusRes.json()
     const deadlineData = await deadlineRes.json()
@@ -318,20 +319,7 @@ async function openPanel(row) {
 
     const today = new Date().toISOString().split("T")[0]
 
-    let html = `<div class="section-title">Read-only Info</div>`
-
-    // show non-status fields as read only
-    const skipKeys = ["id", "project_name","_health", "packaging_type", "packaging_option", ...STATUS_COLS]
-    Object.entries(row).forEach(([key, val]) => {
-        if (!skipKeys.includes(key)) {
-            html += `<div class="field-group">
-                <div class="field-label">${key}</div>
-                <div class="field-readonly">${val ?? "—"}</div>
-            </div>`
-        }
-    })
-
-    html += `<div class="section-title">Status & Deadlines</div>`
+    let html = `<div class="section-title">Status & Deadlines</div>`
 
     STATUS_COLS.forEach(col => {
         const currentVal = statusMap[col] ?? ""
@@ -402,12 +390,12 @@ async function savePanel() {
     })
 
     await Promise.all([
-        fetch(`/api/status/${currentRowId}`, {
+        fetch(`/track/api/status/${currentRowId}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(statusUpdates)
         }),
-        fetch(`/api/deadlines/${currentRowId}`, {
+        fetch(`/track/api/deadlines/${currentRowId}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(deadlineUpdates)
@@ -419,11 +407,11 @@ async function savePanel() {
     // refresh table
     const activeProject = document.querySelector(".project-item.active")
     if (activeProject) {
-        const res = await fetch(`/api/projects/${encodeURIComponent(activeProject.textContent)}`)
+        const res = await fetch(`/track/api/projects/${encodeURIComponent(activeProject.textContent)}`)
         const rows = await res.json()
-        const alertsRes = await fetch(`/api/alerts/${encodeURIComponent(activeProject.textContent)}`)
+        const alertsRes = await fetch(`/track/api/alerts/${encodeURIComponent(activeProject.textContent)}`)
         const alerts=await alertsRes.json()
-        const duesRes = await fetch(`/api/due-today/${encodeURIComponent(activeProject.textContent)}`)
+        const duesRes = await fetch(`/track/api/due-today/${encodeURIComponent(activeProject.textContent)}`)
         const dues=await duesRes.json()
         renderTable(rows)
         renderAlerts(alerts)
@@ -485,7 +473,7 @@ function switchTab(tab) {
 }
 
 async function loadAlerts() {
-    const res = await fetch("/api/alerts")
+    const res = await fetch("/track/api/alerts")
     const alerts = await res.json()
     const body = document.getElementById("alerts-body")
     const overdueCount = document.getElementById("overdue-count")
@@ -514,7 +502,7 @@ async function loadAlerts() {
 }
 
 async function openPanelById(projectId) {
-    const res = await fetch(`/api/projects/id/${projectId}`)
+    const res = await fetch(`/track/api/projects/id/${projectId}`)
     const row = await res.json()
     openPanel(row)
 }
@@ -533,7 +521,7 @@ async function addProject(){
         return
     }
 
-    const res = await fetch("/api/projects", { // Added leading absolute slash
+    const res = await fetch("/track/api/projects", { // Added leading absolute slash
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -564,7 +552,7 @@ async function deleteProject(){
     if (!confirmDelete) return
 
     //Delete the current project
-    const res = await fetch(`/api/projects/${currentRowId}`, { 
+    const res = await fetch(`/track/api/projects/${currentRowId}`, { 
         method: "DELETE" 
     })
     
@@ -577,12 +565,12 @@ async function deleteProject(){
         const activeProject = document.querySelector(".project-item.active")
         //if there is still an active project under the same name then display it in the center grid else clear the grid and display "Select Project"
         if (activeProject) {
-            const refreshRes = await fetch(`/api/projects/${encodeURIComponent(activeProject.textContent)}`)
+            const refreshRes = await fetch(`/track/api/projects/${encodeURIComponent(activeProject.textContent)}`)
             //to get active projects
             const rows = await refreshRes.json()
-            const alertsRes = await fetch(`/api/alerts/${encodeURIComponent(activeProject.textContent)}`)
+            const alertsRes = await fetch(`/track/api/alerts/${encodeURIComponent(activeProject.textContent)}`)
             const alerts=await alertsRes.json()
-            const duesRes = await fetch(`/api/due-today/${encodeURIComponent(activeProject.textContent)}`)
+            const duesRes = await fetch(`/track/api/due-today/${encodeURIComponent(activeProject.textContent)}`)
             const dues=await duesRes.json()
             renderTable(rows)
             renderAlerts(alerts)
@@ -611,7 +599,7 @@ async function downloadExcel(){
         return
     }
 
-    const res = await fetch(`api/download/${encodeURIComponent(fileName)}`);
+    const res = await fetch(`/track/api/download/${encodeURIComponent(fileName)}`);
 
     if(res.ok){
 
@@ -673,7 +661,7 @@ async function importExcel() {
     const formData = new FormData()
     formData.append("file", file)
 
-    const res = await fetch("/api/import", {
+    const res = await fetch("/track/api/import", {
         method: "POST",
         body: formData
     })
@@ -691,7 +679,7 @@ async function importExcel() {
 }
 
 async function loadDueToday() {
-    const res = await fetch("/api/due-today")
+    const res = await fetch("/track/api/due-today")
     const items = await res.json()
 
     const body = document.getElementById("due-today-body")

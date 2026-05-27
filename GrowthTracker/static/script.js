@@ -50,7 +50,7 @@ function normalize(str) {
 }
 
 async function loadProjects() {
-    const res = await fetch("/api/projects")
+    const res = await fetch("/growth/api/projects")
     const projects = await res.json()
 
     const list = document.getElementById("project-list")
@@ -120,11 +120,11 @@ async function selectProject(name, el) {
     el.classList.add("active")
     document.getElementById("selected-project-name").textContent = name
 
-    const res = await fetch(`/api/projects/${encodeURIComponent(name)}`)
+    const res = await fetch(`/growth/api/projects/${encodeURIComponent(name)}`)
     const rows = await res.json()
-    const alertsProject=await fetch(`/api/alerts/${encodeURIComponent(name)}`)
+    const alertsProject=await fetch(`/growth/api/alerts/${encodeURIComponent(name)}`)
     const alerts=await alertsProject.json()
-    const dueRes=await fetch(`api/due-today/${encodeURIComponent(name)}`)
+    const dueRes=await fetch(`/growth/api/due-today/${encodeURIComponent(name)}`)
     const dues=await dueRes.json()
     currentProjectRows = rows
     //to make the alerts and due today for the projects visible on selection
@@ -282,8 +282,8 @@ async function openPanel(row) {
 
     // fetch status and deadlines
     const [statusRes, deadlineRes] = await Promise.all([
-        fetch(`/api/status/${row.id}`),
-        fetch(`/api/deadlines/${row.id}`)
+        fetch(`/growth/api/status/${row.id}`),
+        fetch(`/growth/api/deadlines/${row.id}`)
     ])
     const statusData = await statusRes.json()
     const deadlineData = await deadlineRes.json()
@@ -373,12 +373,12 @@ async function savePanel() {
     })
 
     await Promise.all([
-        fetch(`/api/status/${currentRowId}`, {
+        fetch(`/growth/api/status/${currentRowId}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(statusUpdates)
         }),
-        fetch(`/api/deadlines/${currentRowId}`, {
+        fetch(`/growth/api/deadlines/${currentRowId}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(deadlineUpdates)
@@ -390,11 +390,11 @@ async function savePanel() {
     // refresh table
     const activeProject = document.querySelector(".project-item.active")
     if (activeProject) {
-        const res = await fetch(`/api/projects/${encodeURIComponent(activeProject.textContent)}`)
+        const res = await fetch(`/growth/api/projects/${encodeURIComponent(activeProject.textContent)}`)
         const rows = await res.json()
-        const alertsRes = await fetch(`/api/alerts/${encodeURIComponent(activeProject.textContent)}`)
+        const alertsRes = await fetch(`/growth/api/alerts/${encodeURIComponent(activeProject.textContent)}`)
         const alerts=await alertsRes.json()
-        const duesRes = await fetch(`/api/due-today/${encodeURIComponent(activeProject.textContent)}`)
+        const duesRes = await fetch(`/growth/api/due-today/${encodeURIComponent(activeProject.textContent)}`)
         const dues=await duesRes.json()
         renderTable(rows)
         renderAlerts(alerts)
@@ -456,7 +456,7 @@ function switchTab(tab) {
 }
 
 async function loadAlerts() {
-    const res = await fetch("/api/alerts")
+    const res = await fetch("/growth/api/alerts")
     const alerts = await res.json()
     const body = document.getElementById("alerts-body")
     const overdueCount = document.getElementById("overdue-count")
@@ -485,7 +485,7 @@ async function loadAlerts() {
 }
 
 async function openPanelById(projectId) {
-    const res = await fetch(`/api/projects/id/${projectId}`)
+    const res = await fetch(`/growth/api/projects/id/${projectId}`)
     const row = await res.json()
     openPanel(row)
 }
@@ -504,7 +504,7 @@ async function addProject(){
         return
     }
 
-    const res = await fetch("/api/projects", { // Added leading absolute slash
+    const res = await fetch("/growth/api/projects", { // Added leading absolute slash
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -535,7 +535,7 @@ async function deleteProject(){
     if (!confirmDelete) return
 
     //Delete the current project
-    const res = await fetch(`/api/projects/${currentRowId}`, { 
+    const res = await fetch(`/growth/api/projects/${currentRowId}`, { 
         method: "DELETE" 
     })
     
@@ -548,12 +548,12 @@ async function deleteProject(){
         const activeProject = document.querySelector(".project-item.active")
         //if there is still an active project under the same name then display it in the center grid else clear the grid and display "Select Project"
         if (activeProject) {
-            const refreshRes = await fetch(`/api/projects/${encodeURIComponent(activeProject.textContent)}`)
+            const refreshRes = await fetch(`/growth/api/projects/${encodeURIComponent(activeProject.textContent)}`)
             //to get active projects
             const rows = await refreshRes.json()
-            const alertsRes = await fetch(`/api/alerts/${encodeURIComponent(activeProject.textContent)}`)
+            const alertsRes = await fetch(`/growth/api/alerts/${encodeURIComponent(activeProject.textContent)}`)
             const alerts=await alertsRes.json()
-            const duesRes = await fetch(`/api/due-today/${encodeURIComponent(activeProject.textContent)}`)
+            const duesRes = await fetch(`/growth/api/due-today/${encodeURIComponent(activeProject.textContent)}`)
             const dues=await duesRes.json()
             renderTable(rows)
             renderAlerts(alerts)
@@ -582,7 +582,7 @@ async function downloadExcel(){
         return
     }
 
-    const res = await fetch(`api/download/${encodeURIComponent(fileName)}`);
+    const res = await fetch(`/growth/api/download/${encodeURIComponent(fileName)}`);
 
     if(res.ok){
 
@@ -644,7 +644,7 @@ async function importExcel() {
     const formData = new FormData()
     formData.append("file", file)
 
-    const res = await fetch("/api/import", {
+    const res = await fetch("/growth/api/import", {
         method: "POST",
         body: formData
     })
@@ -662,7 +662,7 @@ async function importExcel() {
 }
 
 async function loadDueToday() {
-    const res = await fetch("/api/due-today")
+    const res = await fetch("/growth/api/due-today")
     const items = await res.json()
 
     const body = document.getElementById("due-today-body")

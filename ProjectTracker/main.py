@@ -50,7 +50,7 @@ def dict_cursor(conn):
 def index(request: Request):
     return templates.TemplateResponse(request, "index.html")
 
-@app.get("/api/projects")
+@app.get("/track/api/projects")
 def get_projects():
     conn = get_conn()
     cur = dict_cursor(conn)
@@ -60,7 +60,7 @@ def get_projects():
     conn.close()
     return [row["project_name"] for row in rows]
 
-@app.get("/api/projects/id/{project_id}")
+@app.get("/track/api/projects/id/{project_id}")
 def get_project_by_id(project_id: int):
     conn = get_conn()
     cur = dict_cursor(conn)
@@ -70,7 +70,7 @@ def get_project_by_id(project_id: int):
     conn.close()
     return dict(row)
 
-@app.get("/api/projects/{project_name}")
+@app.get("/track/api/projects/{project_name}")
 def get_project_rows(project_name: str):
     conn = get_conn()
     cur = dict_cursor(conn)
@@ -125,7 +125,7 @@ def get_project_rows(project_name: str):
     conn.close()
     return result
 
-@app.get("/api/status/{project_id}")
+@app.get("/track/api/status/{project_id}")
 def get_status(project_id: int):
     conn = get_conn()
     cur = dict_cursor(conn)
@@ -135,7 +135,7 @@ def get_status(project_id: int):
     conn.close()
     return [dict(row) for row in rows]
 
-@app.get("/api/deadlines/{project_id}")
+@app.get("/track/api/deadlines/{project_id}")
 def get_deadlines(project_id: int):
     conn = get_conn()
     cur = dict_cursor(conn)
@@ -146,7 +146,7 @@ def get_deadlines(project_id: int):
     # Convert date objects to strings for JSON serialisation
     return [{"column_name": r["column_name"], "deadline": str(r["deadline"]) if r["deadline"] else ""} for r in rows]
 
-@app.get("/api/alerts")
+@app.get("/track/api/alerts")
 def get_alerts():
     conn = get_conn()
     cur = dict_cursor(conn)
@@ -158,7 +158,7 @@ def get_alerts():
         JOIN projects p ON p.id = d.project_id
         JOIN status s ON s.project_id = d.project_id AND s.column_name = d.column_name
         WHERE d.deadline < %s
-        AND s.current_value IS NULL OR s.current_value NOT IN ('Approved','Closed','Dispatched','Yes','Received')
+        AND (s.current_value IS NULL OR s.current_value NOT IN ('Approved','Closed','Dispatched','Yes','Received'))
         ORDER BY d.deadline ASC
     """, (today,))
     rows = cur.fetchall()
@@ -166,7 +166,7 @@ def get_alerts():
     conn.close()
     return [dict(r) | {"deadline": str(r["deadline"])} for r in rows]
 
-@app.get("/api/alerts/{project_name}")
+@app.get("/track/api/alerts/{project_name}")
 def get_alerts_for_project(project_name: str):
     conn = get_conn()
     cur = dict_cursor(conn)
@@ -178,7 +178,7 @@ def get_alerts_for_project(project_name: str):
         JOIN projects p ON p.id = d.project_id
         JOIN status s ON s.project_id = d.project_id AND s.column_name = d.column_name
         WHERE d.deadline < %s AND p.project_name = %s
-        AND s.current_value NOT IN ('Approved','Closed','Dispatched','Yes','Received')
+        AND (s.current_value IS NULL OR s.current_value NOT IN ('Approved','Closed','Dispatched','Yes','Received'))
         ORDER BY d.deadline ASC
     """, (today, project_name))
     rows = cur.fetchall()
@@ -188,7 +188,7 @@ def get_alerts_for_project(project_name: str):
 
 
 
-@app.get("/api/due-today")
+@app.get("/track/api/due-today")
 def get_due_today():
     conn = get_conn()
     cur = dict_cursor(conn)
@@ -200,7 +200,7 @@ def get_due_today():
         JOIN projects p ON p.id = d.project_id
         JOIN status s ON s.project_id = d.project_id AND s.column_name = d.column_name
         WHERE d.deadline = %s
-        AND s.current_value NOT IN ('Approved','Closed','Dispatched','Yes','Received')
+        AND (s.current_value IS NULL OR s.current_value NOT IN ('Approved','Closed','Dispatched','Yes','Received'))
         ORDER BY p.project_name ASC
     """, (today,))
     rows = cur.fetchall()
@@ -208,7 +208,7 @@ def get_due_today():
     conn.close()
     return [dict(r) | {"deadline": str(r["deadline"])} for r in rows]
 
-@app.get("/api/due-today/{project_name}")
+@app.get("/track/api/due-today/{project_name}")
 def get_due_today_for_project(project_name: str):
     conn = get_conn()
     cur = dict_cursor(conn)
@@ -220,7 +220,7 @@ def get_due_today_for_project(project_name: str):
         JOIN projects p ON p.id = d.project_id
         JOIN status s ON s.project_id = d.project_id AND s.column_name = d.column_name
         WHERE d.deadline = %s AND p.project_name = %s
-        AND s.current_value NOT IN ('Approved','Closed','Dispatched','Yes','Received')
+        AND (s.current_value IS NULL OR s.current_value NOT IN ('Approved','Closed','Dispatched','Yes','Received'))
         ORDER BY p.project_name ASC
     """, (today, project_name))
     rows = cur.fetchall()
@@ -228,7 +228,7 @@ def get_due_today_for_project(project_name: str):
     conn.close()
     return [dict(r) | {"deadline": str(r["deadline"])} for r in rows]
 
-@app.put("/api/status/{project_id}")
+@app.put("/track/api/status/{project_id}")
 def update_status(project_id: int, data: dict = Body(...)):
     conn = get_conn()
     cur = conn.cursor()
@@ -255,7 +255,7 @@ def update_status(project_id: int, data: dict = Body(...)):
     conn.close()
     return {"status": "ok"}
 
-@app.post("/api/deadlines/{project_id}")
+@app.post("/track/api/deadlines/{project_id}")
 def save_deadlines(project_id: int, data: dict = Body(...)):
     conn = get_conn()
     cur = conn.cursor()
@@ -271,7 +271,7 @@ def save_deadlines(project_id: int, data: dict = Body(...)):
     conn.close()
     return {"status": "ok"}
 
-@app.post("/api/projects")
+@app.post("/track/api/projects")
 def add_project(data: dict = Body(...)):
     conn = get_conn()
     cur = conn.cursor()
@@ -290,7 +290,7 @@ def add_project(data: dict = Body(...)):
     conn.close()
     return {"status": "ok"}
 
-@app.delete("/api/projects/{project_id}")
+@app.delete("/track/api/projects/{project_id}")
 def delete_project(project_id: int):
     conn = get_conn()
     cur = conn.cursor()
@@ -302,7 +302,7 @@ def delete_project(project_id: int):
     conn.close()
     return {"status": "ok"}
 
-@app.get("/api/download/{excel_name}")
+@app.get("/track/api/download/{excel_name}")
 def download_excel(excel_name: str):
     conn = get_conn()
     cur = dict_cursor(conn)
@@ -351,7 +351,7 @@ def download_excel(excel_name: str):
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-@app.post("/api/import")
+@app.post("/track/api/import")
 async def import_excel(file: UploadFile = File(...)):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
         contents = await file.read()
