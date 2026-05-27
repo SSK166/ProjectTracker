@@ -10,6 +10,8 @@ import os
 import tempfile
 from datetime import date
 from dotenv import load_dotenv
+import tempfile
+from starlette.background import BackgroundTask
 
 load_dotenv()
 
@@ -343,12 +345,16 @@ def download_excel(excel_name: str):
     conn.close()
 
     df = pd.DataFrame(all_rows)
-    file_path = f"{excel_name}.xlsx"
-    df.to_excel(file_path, index=False, sheet_name="Project Tracker")
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+        tmp_path = tmp.name
+
+    df.to_excel(tmp_path, index=False, sheet_name="Project Tracker")
+    
     return FileResponse(
-        path=file_path,
+        path=tmp_path,
         filename=f"{excel_name}.xlsx",
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        background=BackgroundTask(os.remove, tmp_path)
     )
 
 @app.post("/track/api/import")

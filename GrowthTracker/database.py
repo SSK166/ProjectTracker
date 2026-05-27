@@ -50,7 +50,7 @@ def create_tables():
             current_value TEXT,
             completion_date DATE,
             UNIQUE(project_id, column_name),
-            FOREIGN KEY (project_id) REFERENCES projects(id)
+            FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
         )
     """)
 
@@ -66,7 +66,7 @@ def create_tables():
             column_name TEXT,
             deadline DATE,
             UNIQUE(project_id, column_name),
-            FOREIGN KEY (project_id) REFERENCES projects(id)
+            FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
         )
     """)
 
@@ -107,12 +107,12 @@ def import_from_excel():
 
 if __name__ == "__main__":
     create_tables()
-    import_from_excel()  # insert first
+    # import_from_excel()  # insert first
 
-    conn = get_conn()
-    curs = conn.cursor()
-    curs.execute('SELECT * FROM status')
-    res = curs.fetchall()
-    print(f"Result: {res}")
-    curs.close()
-    conn.close()
+    # conn = get_conn()
+    # curs = conn.cursor()
+    # curs.execute('SELECT * FROM status')
+    # res = curs.fetchall()
+    # print(f"Result: {res}")
+    # curs.close()
+    # conn.close()
