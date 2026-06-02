@@ -436,13 +436,15 @@ async def import_excel(file: UploadFile = File(...)):
 
         pm_code = row.get("PM Code")
         project_desc = row.get("Project")
-        composite_name = f"PM - {pm_code} - {project_desc}" if pm_code and project_desc else project_desc
-
+        if pd.isna(project_desc) or str(project_desc).strip() == "":
+            continue
+        # composite_name = f"PM - {pm_code} - {project_desc}" if pm_code and project_desc else project_desc
+        # print(f"Simple Name:{project_desc}")
         cur.execute("""
             INSERT INTO projects (project_name, packaging_type, packaging_option, vendor, pm_code, eta)
             VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
         """, (
-            composite_name, 
+            project_desc, 
             row.get("Packaging Type"), 
             row.get("Packaging Option"), 
             row.get("Vendor"), 
@@ -453,7 +455,7 @@ async def import_excel(file: UploadFile = File(...)):
 
         for col in STATUS_COLUMNS:
             value = row.get(col)
-            value = str(value).title() if pd.notna(value) else None
+            value = str(value).title().strip() if pd.notna(value) else None
 
             completion_date = None
             completion_col = col + " | Completed On"

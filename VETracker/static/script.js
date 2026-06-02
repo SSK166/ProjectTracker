@@ -679,6 +679,8 @@ async function importExcel() {
         alert(`Import successful! ${result.rows_imported} rows added.`)
         fileInput.value = ""
         await loadProjects()
+        await loadAlerts()
+        await loadDueToday()
         switchTab("tracker")
     } else {
         const err = await res.json()
