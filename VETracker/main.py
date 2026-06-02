@@ -162,7 +162,7 @@ def get_alerts():
     cur = dict_cursor(conn)
     today = date.today().isoformat()
     cur.execute("""
-        SELECT p.id as project_id, p.project_name, p.packaging_type, p.packaging_option,
+        SELECT p.id as project_id, p.project_name, p.packaging_type, p.packaging_option,p.vendor,p.eta,
                s.column_name, s.current_value, d.deadline
         FROM deadlines d
         JOIN projects p ON p.id = d.project_id
@@ -182,7 +182,7 @@ def get_alerts_for_project(project_name: str):
     cur = dict_cursor(conn)
     today = date.today().isoformat()
     cur.execute("""
-        SELECT p.id as project_id, p.project_name, p.packaging_type, p.packaging_option,
+        SELECT p.id as project_id, p.project_name, p.packaging_type, p.packaging_option, p.vendor, p.eta,
                s.column_name, s.current_value, d.deadline
         FROM deadlines d
         JOIN projects p ON p.id = d.project_id
@@ -204,7 +204,7 @@ def get_due_today():
     cur = dict_cursor(conn)
     today = date.today().isoformat()
     cur.execute("""
-        SELECT p.id as project_id, p.project_name, p.packaging_type, p.packaging_option,
+        SELECT p.id as project_id, p.project_name, p.packaging_type, p.packaging_option, p.vendor, p.eta,
                s.column_name, s.current_value, d.deadline
         FROM deadlines d
         JOIN projects p ON p.id = d.project_id
@@ -224,7 +224,7 @@ def get_due_today_for_project(project_name: str):
     cur = dict_cursor(conn)
     today = date.today().isoformat()
     cur.execute("""
-        SELECT p.id as project_id, p.project_name, p.packaging_type, p.packaging_option,
+        SELECT p.id as project_id, p.project_name, p.packaging_type, p.packaging_option, p.vendor, p.eta,
                s.column_name, s.current_value, d.deadline
         FROM deadlines d
         JOIN projects p ON p.id = d.project_id

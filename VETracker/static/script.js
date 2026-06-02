@@ -192,13 +192,14 @@ function renderAlerts(alerts){
 
     if (alerts.length === 0){
         alertCount.textContent = ""
-        alertsBody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#888;padding:16px">No overdue items</td></tr>`
+        alertsBody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#888;padding:16px">No overdue items</td></tr>`
         return
     }
 
     alertCount.textContent = `(${alerts.length})`
 
     const keys = Object.keys(alerts[0]).filter(k => k !== "project_id")
+    console.log(`Alert Keys : ${keys}`)
 
     alerts.forEach(a => {
 
@@ -231,7 +232,7 @@ function renderDueToday(dues){
 
     if (dues.length === 0){
         dueCount.textContent = ""
-        duesBody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#888;padding:16px">No tasks due today</td></tr>`
+        duesBody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#888;padding:16px">No tasks due today</td></tr>`
         return
     }
 
@@ -481,7 +482,7 @@ async function loadAlerts() {
 
     if (alerts.length === 0) {
         // console.log("Now");
-        body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#888;padding:24px">No overdue items</td></tr>`
+        body.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#888;padding:24px">No overdue items</td></tr>`
         return
     }
 
@@ -492,6 +493,8 @@ async function loadAlerts() {
                 <td>${a.project_name}</td>
                 <td>${a.packaging_type}</td>
                 <td>${a.packaging_option}</td>
+                <td>${a.vendor}</td>
+                <td>${a.eta}</td>
                 <td>${a.column_name}</td>
                 <td>${(a.current_value==null || a.current_value==="") ? "—":a.current_value}</td>
                 <td style="color:#791F1F;font-weight:500">${a.deadline}</td>
@@ -699,7 +702,7 @@ async function loadDueToday() {
     if (items.length === 0) {
         count.textContent = ""
         countBtn.textContent=""
-        body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#888;padding:24px">No tasks due today</td></tr>`
+        body.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#888;padding:24px">No tasks due today</td></tr>`
         return
     }
 
@@ -710,6 +713,8 @@ async function loadDueToday() {
             <td>${a.project_name}</td>
             <td>${a.packaging_type}</td>
             <td>${a.packaging_option}</td>
+            <td>${a.vendor}</td>
+            <td>${a.eta}</td>
             <td>${a.column_name}</td>
             <td>${(a.current_value==null || a.current_value==="") ? "—":a.current_value}</td>
             <td style="color:#633806;font-weight:500">${a.deadline}</td>
