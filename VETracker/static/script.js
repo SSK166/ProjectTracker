@@ -85,7 +85,7 @@ async function loadProjects() {
         const nameReg=name.split("-");
         // console.log(nameReg.toString());
         // console.log(nameReg[3])
-        div.textContent = nameReg[nameReg.length-2].slice(1)
+        div.textContent = nameReg[nameReg.length-2].slice(1)+" - "+nameReg[nameReg.length-1].slice(1)
         div.dataset.fullname=name;
         div.onclick = () => {selectProject(name, div);
             switchTab('tracker')

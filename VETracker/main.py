@@ -12,7 +12,8 @@ from datetime import date,datetime
 from dotenv import load_dotenv
 import tempfile
 from starlette.background import BackgroundTask
-
+import openpyxl
+from openpyxl.utils import get_column_letter
 
 load_dotenv()
 
@@ -55,7 +56,7 @@ def get_projects():
     rows = cur.fetchall()
     cur.close()
     conn.close()
-    print(f"Projects : {[row["project_name"] for row in rows]}")
+    # print(f"Projects : {[row["project_name"] for row in rows]}")
     return [row["project_name"] for row in rows]
 
 @app.get("/value/api/projects/id/{project_id}")
@@ -307,7 +308,7 @@ def add_project(data: dict = Body(...)):
         VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
     """, (composite_name, data["Packaging Type"], data["Packaging Option"],data["Vendor"],data["PM Code"],eta_val))
     project= cur.fetchone()
-    print(project)
+    # print(project)
     project_id=project[0]
     for col in STATUS_COLUMNS:
         cur.execute("""
@@ -330,18 +331,9 @@ def delete_project(project_id: int):
     return {"status": "ok"}
 
 
-@app.put("/value/api/projects/{project_id}/eta")
-def delete_project(project_id: int):
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM projects WHERE id = %s", (project_id,))
-    conn.commit()
-    cur.close()
-    conn.close()
-    return {"status": "ok"}
-
 @app.get("/value/api/download/{excel_name}")
 def download_excel(excel_name: str):
+    TEXT_COLS=["Comments"]
     conn = get_conn()
     cur = dict_cursor(conn)
     cur.execute("SELECT DISTINCT project_name,MIN(id) FROM projects GROUP BY project_name ORDER BY MIN(id) ASC")
@@ -354,7 +346,7 @@ def download_excel(excel_name: str):
             FROM projects p WHERE p.project_name = %s
         """, (project,))
         rows = cur.fetchall()
-        print(rows)
+        # print(rows)
         for row in rows:
             project_id = row["id"]
             cur.execute("SELECT column_name, current_value, completion_date FROM status WHERE project_id = %s", (project_id,))
@@ -377,8 +369,9 @@ def download_excel(excel_name: str):
             }
             for col in STATUS_COLUMNS:
                 flat[col] = status_map.get(col)
-                flat[col + " | Deadline"] = deadline_map.get(col)
-                flat[col + " | Completed On"] = completion_map.get(col)
+                if(col not in TEXT_COLS):
+                    flat[col + " | Deadline"] = deadline_map.get(col)
+                    flat[col + " | Completed On"] = completion_map.get(col)
             all_rows.append(flat)
 
     cur.close()
@@ -389,7 +382,19 @@ def download_excel(excel_name: str):
         tmp_path = tmp.name
 
     df.to_excel(tmp_path, index=False, sheet_name="VE Tracker")
-    
+
+    # Auto-fit column widths
+    wb = openpyxl.load_workbook(tmp_path)
+    ws = wb.active
+    for col_idx, col_cells in enumerate(ws.columns, 1):
+        max_length = max(
+            len(str(cell.value)) if cell.value is not None else 0
+            for cell in col_cells
+        )
+        ws.column_dimensions[get_column_letter(col_idx)].width = min(max_length + 4, 60)
+        # +4 for padding, capped at 60 so very long text columns don't become huge
+    wb.save(tmp_path)
+        
     return FileResponse(
         path=tmp_path,
         filename=f"{excel_name}.xlsx",
@@ -406,9 +411,9 @@ async def import_excel(file: UploadFile = File(...)):
 
     xl = pd.ExcelFile(tmp_path)
     sheet = xl.sheet_names[0]
-    df = xl.parse(sheet_name=sheet, header=1)
+    df = xl.parse(sheet_name=sheet)#header = 1 for the original excel but for the rest its header=0, so we can just use pandas default of header=0 which treats the first row as header. If the uploaded excels have a different format, we can add logic to detect and handle that.
     xl.close()
-
+    # print(f"Columns : {df.columns}")
     if "Project" in df.columns:
         df["Project"] = df["Project"].ffill()
 
@@ -419,7 +424,7 @@ async def import_excel(file: UploadFile = File(...)):
 
     if "ETA" in df.columns:
         df["ETA"] = pd.to_datetime(df["ETA"], errors='coerce')
-
+    # print(f"DF currently is {df.head()}")
     conn = get_conn()
     cur = conn.cursor()
     rows_imported = 0

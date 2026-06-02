@@ -122,4 +122,4 @@ def import_from_excel():
 if __name__ == "__main__":
     create_tables()
     # Uncomment to seed from original Excel:
-    import_from_excel()
+    # import_from_excel()
