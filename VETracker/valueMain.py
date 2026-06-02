@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Body, File, UploadFile
+from fastapi import APIRouter, Body, File, UploadFile, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
@@ -15,7 +15,10 @@ from starlette.background import BackgroundTask
 import openpyxl
 from openpyxl.utils import get_column_letter
 
-load_dotenv()
+from main import get_current_user,verify_roles
+from userdb import User
+
+load_dotenv(os.path.join(os.path.dirname(__file__),"value.env"))
 
 STATUS_COLUMNS = [
     "Development",
@@ -27,9 +30,8 @@ STATUS_COLUMNS = [
     "Status"
 ]
 
-app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
+router = APIRouter()
+
 
 def get_conn():
     return psycopg2.connect(
@@ -44,12 +46,9 @@ def dict_cursor(conn):
     # psycopg2 equivalent of sqlite3's row_factory
     return conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-@app.get("/")
-def index(request: Request):
-    return templates.TemplateResponse(request, "index.html")
 
-@app.get("/value/api/projects")
-def get_projects():
+@router.get("/api/projects")
+def get_projects(current_user:User=Depends(get_current_user)):
     conn = get_conn()
     cur = dict_cursor(conn)
     cur.execute("SELECT project_name,MIN(id) FROM projects GROUP BY project_name ORDER BY MIN(id) ASC")
@@ -59,8 +58,8 @@ def get_projects():
     # print(f"Projects : {[row["project_name"] for row in rows]}")
     return [row["project_name"] for row in rows]
 
-@app.get("/value/api/projects/id/{project_id}")
-def get_project_by_id(project_id: int):
+@router.get("/api/projects/id/{project_id}")
+def get_project_by_id(project_id: int,current_user:User=Depends(get_current_user)):
     conn = get_conn()
     cur = dict_cursor(conn)
     cur.execute("SELECT * FROM projects WHERE id = %s", (project_id,))
@@ -69,8 +68,8 @@ def get_project_by_id(project_id: int):
     conn.close()
     return dict(row)
 
-@app.get("/value/api/projects/{project_name}")
-def get_project_rows(project_name: str):
+@router.get("/api/projects/{project_name}")
+def get_project_rows(project_name: str,current_user:User=Depends(get_current_user)):
     conn = get_conn()
     cur = dict_cursor(conn)
     cur.execute("""
@@ -125,8 +124,8 @@ def get_project_rows(project_name: str):
     conn.close()
     return result
 
-@app.get("/value/api/status/{project_id}")
-def get_status(project_id: int):
+@router.get("/api/status/{project_id}")
+def get_status(project_id: int,current_user:User=Depends(get_current_user)):
     conn = get_conn()
     cur = dict_cursor(conn)
     cur.execute("SELECT * FROM status WHERE project_id = %s", (project_id,))
@@ -135,8 +134,8 @@ def get_status(project_id: int):
     conn.close()
     return [dict(row) for row in rows]
 
-@app.get("/value/api/deadlines/{project_id}")
-def get_deadlines(project_id: int):
+@router.get("/api/deadlines/{project_id}")
+def get_deadlines(project_id: int,current_user:User=Depends(get_current_user)):
     conn = get_conn()
     cur = dict_cursor(conn)
     cur.execute("SELECT column_name, deadline FROM deadlines WHERE project_id = %s", (project_id,))
@@ -146,8 +145,8 @@ def get_deadlines(project_id: int):
     # Convert date objects to strings for JSON serialisation
     return [{"column_name": r["column_name"], "deadline": str(r["deadline"]) if r["deadline"] else ""} for r in rows]
 
-@app.get("/value/api/eta/{project_id}")
-def get_eta(project_id:int):
+@router.get("/api/eta/{project_id}")
+def get_eta(project_id:int,current_user:User=Depends(get_current_user)):
     conn=get_conn()
     cur=dict_cursor(conn)
     cur.execute("SELECT eta FROM projects where id=%s",(project_id,))
@@ -156,8 +155,8 @@ def get_eta(project_id:int):
     conn.close()
     return {"project_id": project_id, "eta": str(row["eta"]) if row["eta"] else ""}
 
-@app.get("/value/api/alerts")
-def get_alerts():
+@router.get("/api/alerts")
+def get_alerts(current_user:User=Depends(get_current_user)):
     conn = get_conn()
     cur = dict_cursor(conn)
     today = date.today().isoformat()
@@ -176,8 +175,8 @@ def get_alerts():
     conn.close()
     return [dict(r) | {"deadline": str(r["deadline"])} for r in rows]
 
-@app.get("/value/api/alerts/{project_name}")
-def get_alerts_for_project(project_name: str):
+@router.get("/api/alerts/{project_name}")
+def get_alerts_for_project(project_name: str,current_user:User=Depends(get_current_user)):
     conn = get_conn()
     cur = dict_cursor(conn)
     today = date.today().isoformat()
@@ -198,8 +197,8 @@ def get_alerts_for_project(project_name: str):
 
 
 
-@app.get("/value/api/due-today")
-def get_due_today():
+@router.get("/api/due-today")
+def get_due_today(current_user:User=Depends(get_current_user)):
     conn = get_conn()
     cur = dict_cursor(conn)
     today = date.today().isoformat()
@@ -218,8 +217,8 @@ def get_due_today():
     conn.close()
     return [dict(r) | {"deadline": str(r["deadline"])} for r in rows]
 
-@app.get("/value/api/due-today/{project_name}")
-def get_due_today_for_project(project_name: str):
+@router.get("/api/due-today/{project_name}")
+def get_due_today_for_project(project_name: str,current_user:User=Depends(get_current_user)):
     conn = get_conn()
     cur = dict_cursor(conn)
     today = date.today().isoformat()
@@ -238,8 +237,8 @@ def get_due_today_for_project(project_name: str):
     conn.close()
     return [dict(r) | {"deadline": str(r["deadline"])} for r in rows]
 
-@app.put("/value/api/status/{project_id}")
-def update_status(project_id: int, data: dict = Body(...)):
+@router.put("/api/status/{project_id}")
+def update_status(project_id: int, data: dict = Body(...),current_user:User=Depends(verify_roles(["admin","manager34"]))):
     conn = get_conn()
     cur = conn.cursor()
     today = date.today().isoformat()
@@ -265,8 +264,8 @@ def update_status(project_id: int, data: dict = Body(...)):
     conn.close()
     return {"status": "ok"}
 
-@app.put("/value/api/projects/{project_id}/eta")
-def update_eta(project_id: int, data: dict = Body(...)):
+@router.put("/api/projects/{project_id}/eta")
+def update_eta(project_id: int, data: dict = Body(...),current_user:User=Depends(verify_roles(["admin","manager34"]))):
     conn = get_conn()
     cur = dict_cursor(conn)
     cur.execute(
@@ -279,8 +278,8 @@ def update_eta(project_id: int, data: dict = Body(...)):
     return {"status": "ok"}
 
 
-@app.post("/value/api/deadlines/{project_id}")
-def save_deadlines(project_id: int, data: dict = Body(...)):
+@router.post("/api/deadlines/{project_id}")
+def save_deadlines(project_id: int, data: dict = Body(...),current_user:User=Depends(verify_roles(["admin","manager34"]))):
     conn = get_conn()
     cur = conn.cursor()
     for col, deadline in data.items():
@@ -295,8 +294,8 @@ def save_deadlines(project_id: int, data: dict = Body(...)):
     conn.close()
     return {"status": "ok"}
 
-@app.post("/value/api/projects")
-def add_project(data: dict = Body(...)):
+@router.post("/api/projects")
+def add_project(data: dict = Body(...),current_user:User=Depends(verify_roles(["admin","manager34"]))):
     conn = get_conn()
     cur = conn.cursor()
     eta_val = datetime.strptime(data["ETA"], "%Y-%m-%d").date() if data.get("ETA") else None
@@ -320,8 +319,8 @@ def add_project(data: dict = Body(...)):
     conn.close()
     return {"status": "ok"}
 
-@app.delete("/value/api/projects/{project_id}")
-def delete_project(project_id: int):
+@router.delete("/api/projects/{project_id}")
+def delete_project(project_id: int,current_user:User=Depends(verify_roles(["admin","manager34"]))):
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("DELETE FROM projects WHERE id = %s", (project_id,))
@@ -331,8 +330,8 @@ def delete_project(project_id: int):
     return {"status": "ok"}
 
 
-@app.get("/value/api/download/{excel_name}")
-def download_excel(excel_name: str):
+@router.get("/api/download/{excel_name}")
+def download_excel(excel_name: str,current_user:User=Depends(verify_roles(["admin","manager34"]))):
     TEXT_COLS=["Comments"]
     conn = get_conn()
     cur = dict_cursor(conn)
@@ -402,8 +401,8 @@ def download_excel(excel_name: str):
         background=BackgroundTask(os.remove, tmp_path)
     )
 
-@app.post("/value/api/import")
-async def import_excel(file: UploadFile = File(...)):
+@router.post("/api/import")
+async def import_excel(file: UploadFile = File(...),current_user:User=Depends(verify_roles(["admin","manager34"]))):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
         contents = await file.read()
         tmp.write(contents)
