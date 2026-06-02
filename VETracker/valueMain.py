@@ -15,7 +15,7 @@ from starlette.background import BackgroundTask
 import openpyxl
 from openpyxl.utils import get_column_letter
 
-from main import get_current_user,verify_roles
+from dependencies import get_current_user,verify_roles
 from userdb import User
 
 load_dotenv(os.path.join(os.path.dirname(__file__),"value.env"))
