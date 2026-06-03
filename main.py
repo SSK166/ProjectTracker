@@ -7,6 +7,7 @@ from typing import List
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
+from datetime import date
 
 #Import from userdb
 from dependencies import get_current_user,verify_roles
@@ -19,6 +20,7 @@ from VETracker.valueMain import router as value_router
 
 app = FastAPI()
 
+app.mount("/landing/static", StaticFiles(directory="landing/static"), name="landing_static")
 app.mount("/track/static", StaticFiles(directory="ProjectTracker/static"), name="track_static")
 app.mount("/growth/static", StaticFiles(directory="GrowthTracker/static"), name="growth_static")
 app.mount("/value/static", StaticFiles(directory="VETracker/static"), name="value_static")
@@ -27,6 +29,10 @@ db = UserDB()
 
 templates = Jinja2Templates(directory=".")
 
+@app.get("/", response_class=HTMLResponse)
+def serve_authentication_portal(request: Request):
+    # Pass request directly as a primary keyword argument
+    return templates.TemplateResponse(request=request, name="landing/templates/auth.html")
 
 
 @app.on_event("startup") 
@@ -95,19 +101,16 @@ def login(response:Response,username:str=Form(...),password:str=Form(...)):
 
 @app.get("/track", response_class=HTMLResponse)
 def serve_project_tracker_ui(request: Request, current_user: User = Depends(get_current_user)):
-    return templates.TemplateResponse(name="ProjectTracker/templates/index.html", context={"request": request})
+    return templates.TemplateResponse(request=request, name="ProjectTracker/templates/index.html")
 
 @app.get("/growth", response_class=HTMLResponse)
 def serve_growth_tracker_ui(request: Request, current_user: User = Depends(get_current_user)):
-    return templates.TemplateResponse(name="GrowthTracker/templates/index.html", context={"request": request})
+    return templates.TemplateResponse(request=request, name="GrowthTracker/templates/index.html")
 
 @app.get("/value", response_class=HTMLResponse)
 def serve_ve_tracker_ui(request: Request, current_user: User = Depends(get_current_user)):
-    return templates.TemplateResponse(name="VETracker/templates/index.html", context={"request": request})
+    return templates.TemplateResponse(request=request, name="VETracker/templates/index.html")
 
-@app.get("/auth/protected")
-def cur_uname(current_user:User=Depends(get_current_user)):
-    return {"status":"success","message":f"Current user is {current_user.name}","role":current_user.role}
 
 @app.get("/auth/logout")
 def logout(request:Request,response:Response):
@@ -121,6 +124,76 @@ def logout(request:Request,response:Response):
     response.delete_cookie(key="session_id")
     return {"status":"success","message":"User logged out successfully"}
 
-app.include_router(project_router, prefix="/track", tags=["Project Data Feed"])
-app.include_router(growth_router, prefix="/growth", tags=["Growth Data Feed"])
-app.include_router(value_router, prefix="/value", tags=["Value Engineering Data Feed"])
+@app.get("/auth/protected")
+def get_user_role(current_user:User=Depends(get_current_user)):    
+    return {
+        "status":"success",
+        "role":current_user.role,
+        "username":current_user.name
+    }   
+
+@app.get("/trackers/summary")
+def get_central_summary(current_user: User = Depends(verify_roles(["admin"]))):
+    today = date.today().isoformat()
+    summary_data = {
+        "status": "success",
+        "timestamp": datetime.now().isoformat(),
+        "trackers": {}
+    }
+    
+    # --- SCANNING PROJECT TRACKER ---
+    try:
+        from ProjectTracker.projectMain import get_conn as t1_conn
+        with t1_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) FROM projects")
+                t1_total = cur.fetchone()[0]
+                cur.execute("""
+                    SELECT COUNT(*) FROM deadlines d
+                    JOIN status s ON s.project_id = d.project_id AND s.column_name = d.column_name
+                    WHERE d.deadline < %s AND s.current_value NOT IN ('Approved','Closed','Dispatched','Yes','Received')
+                """, (today,))
+                t1_alerts = cur.fetchone()[0]
+        summary_data["trackers"]["project_tracker"] = {"name": "Project Tracker", "total": t1_total, "alerts": t1_alerts}
+    except Exception as e:
+        summary_data["trackers"]["project_tracker"] = {"error": f"Database offline: {str(e)}"}
+
+    # --- SCANNING GROWTH TRACKER ---
+    try:
+        from GrowthTracker.growthMain import get_conn as t3_conn
+        with t3_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) FROM projects")
+                t3_total = cur.fetchone()[0]
+                cur.execute("""
+                    SELECT COUNT(*) FROM deadlines d
+                    JOIN status s ON s.project_id = d.project_id AND s.column_name = d.column_name
+                    WHERE d.deadline < %s AND s.current_value NOT IN ('Received', 'Connected', 'Completed', 'KLD Shared')
+                """, (today,))
+                t3_alerts = cur.fetchone()[0]
+        summary_data["trackers"]["growth_tracker"] = {"name": "Growth Tracker", "total": t3_total, "alerts": t3_alerts}
+    except Exception as e:
+        summary_data["trackers"]["growth_tracker"] = {"error": f"Database offline: {str(e)}"}
+
+    # --- SCANNING VALUE ENGINEERING TRACKER ---
+    try:
+        from VETracker.valueMain import get_conn as t4_conn
+        with t4_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) FROM projects")
+                t4_total = cur.fetchone()[0]
+                cur.execute("""
+                    SELECT COUNT(*) FROM deadlines d
+                    JOIN status s ON s.project_id = d.project_id AND s.column_name = d.column_name
+                    WHERE d.deadline < %s AND s.current_value NOT IN ('Completed','Shared')
+                """, (today,))
+                t4_alerts = cur.fetchone()[0]
+        summary_data["trackers"]["ve_tracker"] = {"name": "Value Engineering Tracker", "total": t4_total, "alerts": t4_alerts}
+    except Exception as e:
+        summary_data["trackers"]["ve_tracker"] = {"error": f"Database offline: {str(e)}"}
+
+    return summary_data
+
+app.include_router(project_router, prefix="/track", tags=["Project Data Feed"],dependencies=[Depends(get_current_user)])
+app.include_router(growth_router, prefix="/growth", tags=["Growth Data Feed"],dependencies=[Depends(get_current_user)])
+app.include_router(value_router, prefix="/value", tags=["Value Engineering Data Feed"],dependencies=[Depends(get_current_user)])

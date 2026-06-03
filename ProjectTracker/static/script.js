@@ -187,6 +187,7 @@ function renderTable(rows) {
         const tr = document.createElement("tr")
         tr.className = "clickable"
         tr.onclick = () => openPanel(row)
+        fullyGreen=isFullyGreen(row)
         if(fullyGreen) tr.style.backgroundColor="#7bff8f"
         allKeys.forEach(key => {
             const td = document.createElement("td")

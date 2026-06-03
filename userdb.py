@@ -3,7 +3,7 @@ import psycopg2.extras
 # import pandas as pd
 from dotenv import load_dotenv
 import os
-import datetime
+from datetime import datetime
 
 load_dotenv()
 
@@ -20,7 +20,7 @@ class UserDB:
         self.db_params={
             "host":os.getenv('DB_HOST'),
             "port":os.getenv('DB_PORT'),
-            "dbname":os.getenv('DB_NAME'),
+            "dbname":os.getenv('USER_DB_NAME'),
             "user":os.getenv('DB_USER'),
             "password":os.getenv('DB_PASSWORD')
         }

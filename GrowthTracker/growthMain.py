@@ -18,7 +18,7 @@ from openpyxl.utils import get_column_letter
 from dependencies import get_current_user,verify_roles
 from userdb import User
 
-load_dotenv(os.path.join(os.path.dirname(__file__),"growth.env"))
+load_dotenv()
 
 STATUS_COLUMNS = [
     "KLD Status",
@@ -35,7 +35,7 @@ def get_conn():
     return psycopg2.connect(
         host=os.getenv("DB_HOST"),
         port=os.getenv("DB_PORT"),
-        dbname=os.getenv("DB_NAME"),
+        dbname=os.getenv("GROWTH_DB_NAME"),
         user=os.getenv("DB_USER"),
         password=os.getenv("DB_PASSWORD")
     )

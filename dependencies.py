@@ -16,7 +16,7 @@ def get_current_user(request: Request) -> User:
     if not cur_user:
         raise HTTPException(
             status_code=401,
-            detail="No user logged in. Log in first"
+            detail="Please Log in first"
         )
     return cur_user
 
