@@ -21,6 +21,27 @@ from userdb import User,UserDB
 router=APIRouter()
 db=UserDB()
 
+tracker_db_params={"host":os.getenv('DB_HOST'),
+            "port":os.getenv('DB_PORT'),
+            "user":os.getenv('DB_USER'),
+            "password":os.getenv('DB_PASSWORD')}
+
+
+
+def get_conn(tracker:str):
+    if(tracker=="project_tracker"):
+        db_name="PROJECT_DB_NAME"
+    elif(tracker=="growth_tracker"):
+        db_name="GROWTH_DB_NAME"
+    elif(tracker=="ve_tracker"):
+        db_name="VALUE_DB_NAME"
+    else:
+        pass
+    tracker_db_params["dbname"] = os.getenv(db_name)  
+    conn = psycopg2.connect(**tracker_db_params)
+    conn.cursor_factory = psycopg2.extras.RealDictCursor
+    return conn
+
 @router.get("/summary")
 def get_central_summary(current_user: User = Depends(verify_roles(["admin"]))):
     today = date.today().isoformat()
@@ -131,3 +152,68 @@ def update_role(username:str=Form(...),role:str=Form(...),current_user:User=Depe
             detail="Server Error Role could not be updated"
         )
     return {"status":"success","message":f"User role updated to {role}"}
+
+@router.get("/last-7-days/{tracker}")
+def get_completed_last_7(tracker:str,current_user: User = Depends(verify_roles(["admin"]))):
+    try:
+        with get_conn(tracker) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT COUNT(*) AS total_count FROM status 
+                    WHERE completion_date >= CURRENT_DATE - INTERVAL '7 days'
+                """)
+                result=cur.fetchone()
+                count = result["total_count"] if result else 0
+        return {"completed_last_7": count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database execution trace failure: {str(e)}")
+    
+@router.get("/upcoming/{tracker}")
+def get_upcoming_deadlines(tracker:str,current_user: User = Depends(verify_roles(["admin"]))):
+    try:
+        with get_conn(tracker) as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT p.project_name, d.column_name, s.current_value, d.deadline 
+                    FROM deadlines d
+                    JOIN projects p ON p.id = d.project_id
+                    JOIN status s ON s.project_id = d.project_id AND s.column_name = d.column_name
+                    WHERE d.deadline > CURRENT_DATE 
+                      AND d.deadline <= CURRENT_DATE + INTERVAL '7 days'
+                      AND s.current_value NOT IN ('Approved','Closed','Dispatched','Completed','Shared','Received','Yes')
+                    ORDER BY d.deadline ASC
+                """)
+                rows = cur.fetchall()
+        return rows
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database execution trace failure: {str(e)}")
+
+@router.get("/7-days-projects/{tracker}")
+def get_last_7_days_projects_(tracker:str,current_user: User = Depends(verify_roles(["admin"]))):
+    try:
+        with get_conn(tracker) as conn:
+            with conn.cursor() as cur:
+                if tracker=="project_tracker":
+                    col="Project Status"
+                    val="Approved"
+                elif tracker=="growth_tracker":
+                    col="Project Status"
+                    val="Completed"
+                elif tracker=="ve_tracker":
+                    col="Status"
+                    val="Completed"
+                cur.execute("""select count(project_id) AS comp_count
+                    from projects p join status s
+                    on p.id=s.project_id
+                    where s.column_name=%s and s.current_value=%s
+                    and s.completion_date>=CURRENT_DATE - INTERVAL '7days'"""
+                ,(col,val))
+                row =cur.fetchone()
+                count=row["comp_count"]
+                return {"status":"success","count":count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database execution trace failure: {str(e)}")
+                
+                
+
+

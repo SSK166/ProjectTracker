@@ -99,7 +99,7 @@ def login(response:Response,username:str=Form(...),password:str=Form(...)):
         )
     session_id=uuid.uuid4().hex
     db.create_session(existing_user.id,session_id,expires_at=datetime.now()+timedelta(days=7))
-    print(f"User {existing_user.name} Role f{existing_user.role}")
+    # print(f"User {existing_user.name} Role {existing_user.role}")
     response.set_cookie(key="session_id",
                         value=session_id,
                         httponly=True,

@@ -13,7 +13,7 @@ function App() {
       <Routes>
         <Route path='/' element={<Summary/>}/>
         <Route path='/switch' element={<SwitchRoles/>}/>
-        <Route path='/detailed/:tracker' element={<TrackerDetail/>}/>
+        <Route path='/detailed/:trackerId' element={<TrackerDetail/>}/>
       </Routes>
     </BrowserRouter>
   )
