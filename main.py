@@ -19,13 +19,18 @@ from GrowthTracker.growthMain import router as growth_router
 from VETracker.valueMain import router as value_router
 from adminPanel.adminMain import router as admin_router
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI()
 
-app.mount("/admin/static",StaticFiles(directory="adminPanel/static"),name="admin_static")
-app.mount("/landing/static", StaticFiles(directory="landing/static"), name="landing_static")
-app.mount("/track/static", StaticFiles(directory="ProjectTracker/static"), name="track_static")
-app.mount("/growth/static", StaticFiles(directory="GrowthTracker/static"), name="growth_static")
-app.mount("/value/static", StaticFiles(directory="VETracker/static"), name="value_static")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://127.0.0.1:5173","http://localhost:5173"], # Your local React development environment URL
+    allow_credentials=True,                 # 🚨 CRITICAL: Allows browser session cookies to pass through the security wall!
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+# In main.py
 
 db = UserDB()
 
@@ -94,10 +99,12 @@ def login(response:Response,username:str=Form(...),password:str=Form(...)):
         )
     session_id=uuid.uuid4().hex
     db.create_session(existing_user.id,session_id,expires_at=datetime.now()+timedelta(days=7))
+    print(f"User {existing_user.name} Role f{existing_user.role}")
     response.set_cookie(key="session_id",
                         value=session_id,
                         httponly=True,
-                        samesite='lax')
+                        samesite='none',
+                        secure=True)
     return {"status":"success",
     "message":"User logged in successfully"}
 
@@ -106,8 +113,8 @@ def serve_project_tracker_ui(request: Request, current_user: User = Depends(get_
     return templates.TemplateResponse(request=request, name="ProjectTracker/templates/index.html")
 
 @app.get("/admin", response_class=HTMLResponse)
-def serve_project_tracker_ui(request: Request, current_user: User = Depends(get_current_user)):
-    return templates.TemplateResponse(request=request, name="adminPanel/templates/index.html")
+def serve_admin_panel_ui(request: Request, current_user: User = Depends(get_current_user)):
+    return templates.TemplateResponse(request=request, name="adminPanel/admin-frontend/dist/index.html")
 
 @app.get("/growth", response_class=HTMLResponse)
 def serve_growth_tracker_ui(request: Request, current_user: User = Depends(get_current_user)):
@@ -142,3 +149,10 @@ app.include_router(admin_router,prefix="/admin",tags=["AdminPage"],dependencies=
 app.include_router(project_router, prefix="/track", tags=["Project Data Feed"],dependencies=[Depends(get_current_user)])
 app.include_router(growth_router, prefix="/growth", tags=["Growth Data Feed"],dependencies=[Depends(get_current_user)])
 app.include_router(value_router, prefix="/value", tags=["Value Engineering Data Feed"],dependencies=[Depends(get_current_user)])
+
+#Mount static resources
+app.mount("/admin/assets", StaticFiles(directory="adminPanel/admin-frontend/dist/assets"), name="admin_assets")
+app.mount("/landing/static", StaticFiles(directory="landing/static"), name="landing_static")
+app.mount("/track/static", StaticFiles(directory="ProjectTracker/static"), name="track_static")
+app.mount("/growth/static", StaticFiles(directory="GrowthTracker/static"), name="growth_static")
+app.mount("/value/static", StaticFiles(directory="VETracker/static"), name="value_static")
