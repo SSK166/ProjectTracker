@@ -11,7 +11,7 @@ from datetime import date
 
 #Import from userdb
 from dependencies import get_current_user,verify_roles
-from userdb import User,UserDB
+from userdb import User,UserDB,ResetRequest
 
 
 from ProjectTracker.projectMain import router as project_router
@@ -25,8 +25,8 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:5173","http://localhost:5173"], # Your local React development environment URL
-    allow_credentials=True,                 # 🚨 CRITICAL: Allows browser session cookies to pass through the security wall!
+    allow_origins=["http://127.0.0.1:5173","http://localhost:5173"], #local React development environment URL
+    allow_credentials=True,                 # Allows browser session cookies to pass through the security wall!
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -46,6 +46,7 @@ def serve_authentication_portal(request: Request):
 def manage_startup():
     db.create_auth_table()
     db.create_session_table()
+    db.create_forgot_requests_table()
 
 def hash_password(password:str) -> str:
     #returns a hased password for the given password
@@ -134,7 +135,14 @@ def logout(request:Request,response:Response):
             detail="No user logged in"
         )
     db.delete_session(session_id)
-    response.delete_cookie(key="session_id")
+    response.delete_cookie(
+        key="session_id",
+        path="/",                          
+        domain="127.0.0.1",                
+        httponly=True,                     
+        samesite="none",
+        secure=True                  
+    )
     return {"status":"success","message":"User logged out successfully"}
 
 @app.get("/auth/protected")
@@ -144,6 +152,20 @@ def get_user_role(current_user:User=Depends(get_current_user)):
         "role":current_user.role,
         "username":current_user.name
     }   
+
+@app.post("/auth/reset")
+def request_reset(username:str=Form(...),password:str=Form(...),current_user:User=Depends(get_current_user)):
+    cur_user=db.get_by_username(username)
+    if not cur_user:
+        raise HTTPException(
+            status_code=404,
+            detail="No user found with given username"
+        )
+    req=ResetRequest(username,password)
+    db.create_reset_request(req)
+    return {"status":"success","message":"Request Created successfully"}
+    
+
 
 app.include_router(admin_router,prefix="/admin",tags=["AdminPage"],dependencies=[Depends(verify_roles(["admin"]))])
 app.include_router(project_router, prefix="/track", tags=["Project Data Feed"],dependencies=[Depends(get_current_user)])

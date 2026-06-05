@@ -14,6 +14,11 @@ class User:
         self.pw=pw
         self.role=role
 
+class ResetRequest:
+    def __init__(self,username:str,password:str):
+        self.name=username
+        self.pw=password
+
 class UserDB:
     def __init__(self):
         #creating a params object that I can use it to create new connections easily
@@ -59,6 +64,17 @@ class UserDB:
                     )
                 """)
     
+    def create_forgot_requests_table(self):
+        with self.get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""CREATE TABLE password_reset_requests (
+                    id SERIAL PRIMARY KEY,
+                    username TEXT NOT NULL,
+                    requested_password_hash TEXT NOT NULL,
+                    status TEXT DEFAULT 'PENDING', -- 'PENDING', 'APPROVED', 'REJECTED'
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )""")
+    
     def create_session(self,user_id:int,session_id:str,expires_at:datetime) -> bool:
         with self.get_conn() as conn:
             with conn.cursor() as cur:
@@ -98,6 +114,13 @@ class UserDB:
                 """,(session_id,))
                 conn.commit()
                 return True
+    
+    # def create_reset_request(self,req:ResetRequest):
+    #     with self.get_conn as conn:
+    #         with conn.cursor() as cur:
+    #             cur.execute("""
+    #                 INSERT INTO password_reset_requests ()
+    #             )""")
     
     def create_user(self,user:User):
         #user creation for register

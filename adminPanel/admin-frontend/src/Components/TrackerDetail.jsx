@@ -162,9 +162,9 @@ export default function TrackerDetail() {
                     <div className="stat-highlight alert-text">
                         {worst.length} {worst.length<=1?"Task":"Tasks"} Overdue
                         <div>
-                            {worst.map((w)=>{
+                            {worst.map((w,idx)=>{
                                 return(
-                                    <div key={w.project_id}>
+                                    <div key={idx}>
                                         Project Name: {w.project_name}<br/>
                                         Task : {w.column_name}<br/>
                                         Current Status : {w.current_value}<br/>

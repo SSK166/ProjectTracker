@@ -707,6 +707,36 @@ async function loadDueToday() {
     // (val == null || val === "") ? "—" : val
 }
 
+const logout = async () => {
+    const log=await fetch('http://127.0.0.1:8000/auth/logout',{credentials:'include'})
+    if(log.ok){
+      const logRes= await log.json();
+      window.location.assign("http://127.0.0.1:8000")
+    }
+    else{
+      const errData = await log.json();
+      alert(`Error: ${errData.detail || "Failed to logout."}`);
+    }
+}
+
+const switchTracker = async (tracker) => {
+    const trackerChooser=document.getElementById("trackers")
+    trackerChooser.value=tracker;
+    if(tracker!="admin/summary") window.location.assign(`http://127.0.0.1:8000/${tracker}`)
+    else{
+        const res = await fetch(`http://127.0.0.1:8000/${tracker}`, { credentials: "include" });
+        if (!res.ok) {
+            alert("Permission denied.");
+            return;
+        }
+        if (res.status === 307 || res.status === 401) {
+            alert("No user logged in.");
+            window.location.assign("http://127.0.0.1:8000");
+            return;
+        }
+        window.location.assign("http://localhost:5173")
+    }
+}
 loadProjects()
 loadAlerts()
 loadDueToday()

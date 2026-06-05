@@ -244,6 +244,7 @@ body {
 .nav-container{
     padding: 20px;
     background: #ffffff; 
+    align-items:flex-start;
     border-bottom: 1px solid #e0e0e0; 
     display: flex;
     gap: 20px;
@@ -370,4 +371,24 @@ body {
 
 .detailed-metric-grid .panel-form-card {
     margin: 0;
+}
+
+.logout-btn{
+    text-decoration:none;
+    margin-left:auto;
+    padding: 12px;
+    background: #4F46E5;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s ease;
+    cursor:pointer;
+}
+
+.logout-btn:hover {
+    background: #4941e5;
 }
