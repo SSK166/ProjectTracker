@@ -30,10 +30,11 @@ export default function TrackerDetail() {
 
     const [overDues, setoverDues] = useState([]); 
     const [dueToday, setDueToday] = useState([]);
-    const [sevenComplete, setSevenComplete] = useState(null);
     const [upcoming, setUpcoming] = useState([]);
     const [summaryInfo, setSummaryInfo] = useState(null);
     const [worst,setWorst] = useState([]);
+    const [completedLast7Days,setcompletedLast7Days] = useState([]);
+    const [tasksCompletedToday,setTasksCompletedToday] = useState([]);
 
     if (!baseUrl) {
         return (
@@ -55,7 +56,7 @@ export default function TrackerDetail() {
                 .sort((a, b) => b.days_overdue - a.days_overdue)
                 .slice(0, 5));
             } catch (err) {
-                console.error("Error fetching backlogs:", err);
+                console.error("Error in fetching backlogs:", err);
             }
         };
         fetchOverDues();
@@ -69,25 +70,11 @@ export default function TrackerDetail() {
                 const dues = await duesRes.json();
                 setDueToday(dues);
             } catch (err) {
-                console.error("Error fetching tasks that are due today:", err);
+                console.error("Error in fetching tasks that are due today:", err);
             }
         };
         fetchDueToday();
     }, [baseUrl]);
-
-    // getting count of tasks completed last seven days
-    useEffect(() => {
-        const fetchLastSeven = async () => {
-            try {
-                const lastSevenRes = await fetch(`http://127.0.0.1:8000/admin/7-days-projects/${title}`, { credentials: "include" });
-                const lastSeven = await lastSevenRes.json();
-                setSevenComplete(lastSeven);
-            } catch (err) {
-                console.error("Error fetching metrics of the last week:", err);
-            }
-        };
-        fetchLastSeven();
-    }, [title]);
 
     // getting count of tasks due in next seven days
     useEffect(() => {
@@ -97,7 +84,7 @@ export default function TrackerDetail() {
                 const upcomingSeven = await upcomingRes.json();
                 setUpcoming(upcomingSeven);
             } catch (err) {
-                console.error("Error fetching upcoming deadlines:", err);
+                console.error("Error in fetching upcoming deadlines:", err);
             }
         };
         fetchUpcoming();
@@ -111,17 +98,47 @@ export default function TrackerDetail() {
                 const summaryData = await summaryRes.json();
                 setSummaryInfo(summaryData);
             } catch (err) {
-                console.error("Error connecting to basic summary endpoint:", err);
+                console.error("Error in connecting to basic summary endpoint:", err);
             }
         };
         fetchSummaryData();
         
     }, [trackerId]);
 
+    // get summary info for tracker health and stuff
+    useEffect(() => {
+        const fetchcompletedLast7Days = async () => {
+            try {
+                const compLast7DaysRes = await fetch(`http://127.0.0.1:8000/admin/last-7-days-complete-projects/${title}`, { credentials: "include" });
+                const compLast7DaysData = await compLast7DaysRes.json();
+                setcompletedLast7Days(compLast7DaysData?compLast7DaysData.tasks:[]);
+            } catch (err) {
+                console.error("Error in fetching the projects completed in last 7 days:", err);
+            }
+        };
+        fetchcompletedLast7Days();
+        
+    }, [title]);
+
+    useEffect(() => {
+        const fetchTasksCompletedToday = async () => {
+            try {
+                const compTodayRes = await fetch(`http://127.0.0.1:8000/admin/today-complete-tasks/${title}`, { credentials: "include" });
+                const compTodayData = await compTodayRes.json();
+                setTasksCompletedToday(compTodayData?compTodayData.tasks:[]);
+            } catch (err) {
+                console.error("Error in fetching the tasks completed today:", err);
+            }
+        };
+        fetchTasksCompletedToday();
+        
+    }, [title]);
+
     const trackerStats = summaryInfo?.trackers?.[trackerId] || {};
     const totalTasks = trackerStats.total || 0;
     const completedTodayCount = trackerStats.completed_today || 0;
-    const healthScorePercentage = totalTasks > 0 ? Math.round((completedTodayCount / totalTasks) * 100) : 0;
+    const completedTasks = trackerStats.completed || 0;
+    const healthScorePercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
     return (
         <div className="admin-workspace">
@@ -137,11 +154,11 @@ export default function TrackerDetail() {
                 <div className="metrics-grid">
 
                     <div className="panel-form-card metric-card-full">
-                        <div className="card-label">Tracker health score</div>
+                        <div className="card-label">Completion Score</div>
                         <div className={`stat-num ${healthScorePercentage > 25 ? "nominal-text" : "alert-text"}`}>
                             {healthScorePercentage}%
                         </div>
-                        <div className="stat-sub">Tasks on track</div>
+                        <div className="stat-sub">Projects Completed</div>
                         <div className="progress-container">
                             <div className="progress-bar-bg">
                                 <div
@@ -163,21 +180,21 @@ export default function TrackerDetail() {
                     </div>
 
                     <div className="panel-form-card metric-card-full">
-                        <div className="card-label">Completed today</div>
+                        <div className="card-label">Tasks Completed today</div>
                         <div className="stat-num nominal-text">
                             {completedTodayCount}
                         </div>
-                        <div className="stat-sub">Tasks finished today</div>
+                        <div className="stat-sub">Individual tasks finished today</div>
                     </div>
 
                     <div className="panel-form-card metric-card-full">
-                        <div className="card-label">Completed last 7 days</div>
+                        <div className="card-label">Projects Completed last 7 days</div>
                         <div className="stat-num nominal-text">
-                            {sevenComplete !== null ? sevenComplete.count : "—"}
+                            {completedLast7Days !== null ? completedLast7Days.length : "—"}
                         </div>
                         <div className="stat-sub">
-                            {sevenComplete !== null
-                                ? `${sevenComplete.count === 1 ? "Project" : "Projects"} finished this week`
+                            {completedLast7Days !== null
+                                ? `${completedLast7Days.length === 1 ? "Project" : "Projects"} finished this week`
                                 : "Calculating..."}
                         </div>
                         <p className="developer-footnote">
@@ -198,7 +215,7 @@ export default function TrackerDetail() {
                                     <div className="worst-item-title">{w.project_name}</div>
                                     <div className="worst-item-meta">
                                         <span>Task: {w.column_name}</span>
-                                        <span>Status: {w.current_value}</span>
+                                        <span>Status: {(!w.current_value||w.current_value==="")?"NIL":w.current_value}</span>
                                         <span className="deadline-badge">Due: {w.deadline}</span>
                                     </div>
                                 </div>
@@ -218,7 +235,62 @@ export default function TrackerDetail() {
                                     <div className="due-today-item-title">{d.project_name}</div>
                                     <div className="due-today-item-meta">
                                         <span>Task: {d.column_name}</span>
-                                        <span>Status: {d.current_value}</span>
+                                        <span>Status: {(!d.current_value||d.current_value==="")?"NIL":d.current_value}</span>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+
+                <div className="panel-form-card metric-card-full">
+                    <div className="card-label">Projects Completed in Last 7 Days</div>
+                    <div className="due-today-list">
+                        {completedLast7Days.length === 0 ? (
+                            <div className="stat-sub">No Projects Completed in Last 7 Days</div>
+                        ) : (
+                            completedLast7Days.map((c, idx) => (
+                                <div className="due-today-item" key={idx}>
+                                    <div className="due-today-item-title">{c.project_name}</div>
+                                    <div className="due-today-item-meta">Completion Date: {c.comp_date}</div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+
+                <div className="panel-form-card metric-card-full">
+                    <div className="card-label">Tasks completed today</div>
+                    <div className="due-today-list">
+                        {tasksCompletedToday.length === 0 ? (
+                            <div className="stat-sub">No Tasks Completed today</div>
+                        ) : (
+                            tasksCompletedToday.map((c, idx) => (
+                                <div className="due-today-item" key={idx}>
+                                    <div className="due-today-item-title">{c.project_name}</div>
+                                    <div className="due-today-item-meta">
+                                        <span>Task: {c.column_name}</span>
+                                        <span>Status: {c.current_value}</span>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+
+                <div className="panel-form-card metric-card-full">
+                    <div className="card-label">Upcoming Tasks(for next 7 days)</div>
+                    <div className="due-today-list">
+                        {upcoming.length === 0 ? (
+                            <div className="stat-sub">No Tasks due for next 7 days</div>
+                        ) : (
+                            upcoming.map((u, idx) => (
+                                <div className="due-today-item" key={idx}>
+                                    <div className="due-today-item-title">{u.project_name}</div>
+                                    <div className="due-today-item-meta">
+                                        <span>Task: {u.column_name}</span>
+                                        <span>Status: {u.current_value}</span>
+                                        <span>Deadline: {u.deadline}</span>
                                     </div>
                                 </div>
                             ))

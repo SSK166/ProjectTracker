@@ -36,9 +36,12 @@ def get_conn(tracker:str):
     elif(tracker=="ve_tracker"):
         db_name="VALUE_DB_NAME"
     else:
-        pass
-    tracker_db_params["dbname"] = os.getenv(db_name)  
-    conn = psycopg2.connect(**tracker_db_params)
+        raise HTTPException(
+            status_code=400,
+            detail="No such database found"
+        )
+    params={**tracker_db_params,"dbname":os.getenv(db_name)}
+    conn = psycopg2.connect(**params)
     conn.cursor_factory = psycopg2.extras.RealDictCursor
     return conn
 
@@ -77,7 +80,14 @@ def get_central_summary(current_user: User = Depends(verify_roles(["admin"]))):
                     WHERE completion_date = %s
                 """,(today,))
                 t1_completed_today=cur.fetchone()[0]
-        summary_data["trackers"]["project_tracker"] = {"name": "Project Tracker", "total": t1_total, "alerts": t1_alerts, "due_today":t1_due_today,"completed_today":t1_completed_today}
+                cur.execute("""
+                    SELECT count(p.id) 
+                    FROM projects p JOIN status s
+                    ON p.id=s.project_id
+                    WHERE s.column_name='Project Status' AND LOWER(TRIM(s.current_value))='approved'
+                """)
+                t1_completed=cur.fetchone()[0]
+        summary_data["trackers"]["project_tracker"] = {"name": "Project Tracker", "total": t1_total, "alerts": t1_alerts, "due_today":t1_due_today,"completed_today":t1_completed_today,"completed":t1_completed}
     except Exception as e:
         summary_data["trackers"]["project_tracker"] = {"error": f"Database offline: {str(e)}"}
 
@@ -109,7 +119,14 @@ def get_central_summary(current_user: User = Depends(verify_roles(["admin"]))):
                     WHERE completion_date = %s
                 """,(today,))
                 t3_completed_today=cur.fetchone()[0]
-        summary_data["trackers"]["growth_tracker"] = {"name": "Growth Tracker", "total": t3_total, "alerts": t3_alerts, "due_today":t3_due_today,"completed_today":t3_completed_today}
+                cur.execute("""
+                    SELECT count(p.id) 
+                    FROM projects p JOIN status s
+                    ON p.id=s.project_id
+                    WHERE s.column_name='Project Status' AND LOWER(TRIM(s.current_value))='completed'
+                """)
+                t3_completed=cur.fetchone()[0]
+        summary_data["trackers"]["growth_tracker"] = {"name": "Growth Tracker", "total": t3_total, "alerts": t3_alerts, "due_today":t3_due_today,"completed_today":t3_completed_today,"completed":t3_completed}
     except Exception as e:
         summary_data["trackers"]["growth_tracker"] = {"error": f"Database offline: {str(e)}"}
 
@@ -139,7 +156,14 @@ def get_central_summary(current_user: User = Depends(verify_roles(["admin"]))):
                     WHERE completion_date = %s
                 """,(today,))
                 t4_completed_today=cur.fetchone()[0]
-        summary_data["trackers"]["ve_tracker"] = {"name": "Value Engineering Tracker", "total": t4_total, "alerts": t4_alerts, "due_today":t4_due_today,"completed_today":t4_completed_today}
+                cur.execute("""
+                    SELECT count(p.id) 
+                    FROM projects p JOIN status s
+                    ON p.id=s.project_id
+                    WHERE s.column_name='Status' AND LOWER(TRIM(s.current_value))='completed'
+                """)
+                t4_completed=cur.fetchone()[0]
+        summary_data["trackers"]["ve_tracker"] = {"name": "Value Engineering Tracker", "total": t4_total, "alerts": t4_alerts, "due_today":t4_due_today,"completed_today":t4_completed_today,"completed":t4_completed}
     except Exception as e:
         summary_data["trackers"]["ve_tracker"] = {"error": f"Database offline: {str(e)}"}
 
@@ -161,21 +185,7 @@ def update_role(username:str=Form(...),role:str=Form(...),current_user:User=Depe
         )
     return {"status":"success","message":f"User role updated to {role}"}
 
-@router.get("/last-7-days/{tracker}")
-def get_completed_last_7(tracker:str,current_user: User = Depends(verify_roles(["admin"]))):
-    try:
-        with get_conn(tracker) as conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    SELECT COUNT(*) AS total_count FROM status 
-                    WHERE completion_date >= CURRENT_DATE - INTERVAL '7 days'
-                """)
-                result=cur.fetchone()
-                count = result["total_count"] if result else 0
-        return {"completed_last_7": count}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database execution trace failure: {str(e)}")
-    
+
 @router.get("/upcoming/{tracker}")
 def get_upcoming_deadlines(tracker:str,current_user: User = Depends(verify_roles(["admin"]))):
     try:
@@ -196,8 +206,9 @@ def get_upcoming_deadlines(tracker:str,current_user: User = Depends(verify_roles
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database execution trace failure: {str(e)}")
 
-@router.get("/7-days-projects/{tracker}")
-def get_last_7_days_projects_(tracker:str,current_user: User = Depends(verify_roles(["admin"]))):
+                
+@router.get('/last-7-days-complete-projects/{tracker}')
+def get_projects_completed_in_last_7_days(tracker:str,current_user:User=Depends(verify_roles(["admin"]))):
     try:
         with get_conn(tracker) as conn:
             with conn.cursor() as cur:
@@ -210,18 +221,31 @@ def get_last_7_days_projects_(tracker:str,current_user: User = Depends(verify_ro
                 elif tracker=="ve_tracker":
                     col="Status"
                     val="Completed"
-                cur.execute("""select count(project_id) AS comp_count
+                cur.execute("""select p.id,p.project_name,s.column_name,s.completion_date AS comp_date
                     from projects p join status s
                     on p.id=s.project_id
                     where s.column_name=%s and s.current_value=%s
-                    and s.completion_date>=CURRENT_DATE - INTERVAL '7days'"""
+                    and s.completion_date >= NOW() - INTERVAL '7 days'"""
                 ,(col,val))
-                row =cur.fetchone()
-                count=row["comp_count"]
-                return {"status":"success","count":count}
+                rows =cur.fetchall()
+                return {"status":"success","tasks":rows}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database execution trace failure: {str(e)}")
-                
-                
+
+@router.get('/today-complete-tasks/{tracker}')
+def get_tasks_completed_today(tracker:str,current_user:User=Depends(verify_roles(["admin"]))):
+    try:
+        with get_conn(tracker) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT p.id,p.project_name,s.column_name,s.current_value
+                    FROM status s join projects p
+                    ON p.id=s.project_id
+                    WHERE completion_date = %s"""
+                ,(date.today().isoformat(),))
+                rows =cur.fetchall()
+                return {"status":"success","tasks":rows}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database execution trace failure: {str(e)}")
 
 

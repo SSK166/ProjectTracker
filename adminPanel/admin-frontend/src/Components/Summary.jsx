@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { useNavigation,NavLink } from "react-router-dom";
+import {NavLink } from "react-router-dom";
 import "../../../static/style.css"; 
 
 export default function Summary() {
     const [summary, setSummary] = useState({});
-    // const navigate = useNavigation();
     useEffect(() => {
         const fetchSummary = async () => {
             try {

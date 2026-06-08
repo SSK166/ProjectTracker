@@ -1,7 +1,6 @@
 import { BrowserRouter, Route, Routes, NavLink } from 'react-router-dom';
 import Summary from './Components/Summary';
 import SwitchRoles from './Components/SwitchRoles';
-import Detailed from './Components/TrackerDetail';
 import TrackerDetail from './Components/TrackerDetail';
 
 function App() {
