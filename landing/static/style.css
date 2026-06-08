@@ -1,0 +1,179 @@
+/* ─── Global Base Settings ────────────────────────────────── */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f5f5f5;
+    color: #1a1a1a;
+    font-size: 14px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+/* ─── Portal Card Layout ──────────────────────────────────── */
+.auth-wrapper {
+    width: 440px;
+    max-width: 90%;
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    padding: 32px 28px;
+    display: flex;
+    flex-direction: column;
+}
+
+.auth-header {
+    margin-bottom: 24px;
+    text-align: center;
+}
+
+.auth-header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 6px;
+}
+
+.auth-header p {
+    font-size: 13px;
+    color: #888;
+}
+
+/* ─── Toggle Navigation State Bar ─────────────────────────── */
+.auth-tabs {
+    display: flex;
+    border-bottom: 1px solid #e0e0e0;
+    background: #fff;
+    margin-bottom: 24px;
+}
+
+.auth-tab-btn {
+    flex: 1;
+    padding: 12px 0;
+    border: none;
+    background: none;
+    font-size: 13px;
+    font-weight: 500;
+    color: #888;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    text-align: center;
+    transition: all 0.15s ease;
+}
+
+.auth-tab-btn.active {
+    color: #4F46E5;
+    border-bottom-color: #4F46E5;
+    font-weight: 600;
+}
+
+.auth-tab-btn:hover {
+    color: #4F46E5;
+}
+
+/* ─── Input & Group Structuring ───────────────────────────── */
+.form-container {
+    display: none;
+}
+
+.form-container.active {
+    display: block;
+}
+
+.field-group {
+    margin-bottom: 20px;
+}
+
+.field-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #888;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: block;
+}
+
+.field-group input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #1a1a1a;
+    background: #fff;
+    font-family: inherit;
+    transition: border-color 0.15s ease;
+}
+
+.field-group input:focus {
+    outline: none;
+    border-color: #4F46E5;
+}
+
+/* ─── Control Execution Elements ──────────────────────────── */
+.auth-btn {
+    width: 100%;
+    padding: 11px;
+    background: #4F46E5;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s ease;
+    margin-top: 4px;
+}
+
+.auth-btn:hover {
+    background:#4941e5;
+}
+
+/* ─── Dynamic Alerts Notification System ──────────────────── */
+.message-banner {
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    margin-bottom: 20px;
+    display: none;
+    line-height: 1.4;
+}
+
+.message-banner.error {
+    background: #FCEBEB;
+    border: 1px solid #f5c6c6;
+    color: #791F1F;
+    display: block;
+}
+
+.message-banner.success {
+    background: #EAF3DE;
+    border: 1px solid #c9e2a7;
+    color: #27500A;
+    display: block;
+}
+
+.forgot-pw{
+    width:100%;
+    margin-top:14px;
+    border-color:white;
+    background-color: white;
+    box-shadow:none;
+    border-width:0px;
+    cursor:pointer;
+    transition:background-color 0.2s ease-in-out
+}
+
+.forgot-pw:hover{
+    color:#4F46E5;
+}

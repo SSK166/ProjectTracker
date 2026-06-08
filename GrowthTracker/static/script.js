@@ -637,7 +637,6 @@ async function importExcel() {
         alert("Please select an Excel file first")
         return
     }
-
     const confirmed = confirm(`Import "${file.name}" into the tracker? This will add all rows from the file.`)
     if (!confirmed) return
 

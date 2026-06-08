@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tracker Authorization</title>
+    <link rel="stylesheet" href="/landing/static/style.css">
+    <link rel="icon" type="image/png" href="/landing/static/images/yogabar.png">
+</head>
+<body>
+    <div class="auth-wrapper">
+        <div class="auth-header">
+            <h1>Tracker System Authorization</h1>
+            <p>Enter the credentials</p>
+        </div>
+
+        <div class="auth-tabs">
+            <button class="auth-tab-btn active" id="tabSignIn">Sign In</button>
+            <button class="auth-tab-btn" id="tabSignUp">Register User</button>
+        </div>
+
+        <div id="messageBanner" class="message-banner"></div>
+
+        <div class="form-container active" id="signInSection">
+            <form id="loginForm">
+                <div class="field-group">
+                    <label class="field-label">Username</label>
+                    <input type="text" name="username" required autocomplete="username">
+                </div>
+                <div class="field-group">
+                    <label class="field-label">Password</label>
+                    <input type="password" name="password" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="auth-btn">Sign In</button>
+            </form>
+        </div>
+
+        <div class="form-container" id="signUpSection">
+            <form id="registerForm">
+                <div class="field-group">
+                    <label class="field-label">Username</label>
+                    <input type="text" name="username" required autocomplete="username">
+                </div>
+                <div class="field-group">
+                    <label class="field-label">Email</label>
+                    <input type="email" name="email" required autocomplete="email">
+                </div>
+                <div class="field-group">
+                    <label class="field-label">Password</label>
+                    <input type="password" name="password" required autocomplete="new-password">
+                </div>
+                
+                <button type="submit" class="auth-btn">Register Profile</button>
+            </form>
+        </div>
+        <button class="forgot-pw">Forgot Password</button>
+    </div>
+
+
+    <script src="/landing/static/script.js"></script>
+    <script>
+        const msg = new URLSearchParams(window.location.search).get("msg");
+        if (msg) {
+            alert(msg);
+            console.log(msg);
+            window.history.replaceState({}, "", "/");
+        }
+    </script>
+</body>
+</html>

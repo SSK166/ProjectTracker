@@ -13,6 +13,11 @@ from datetime import date
 from dependencies import get_current_user,verify_roles
 from userdb import User,UserDB,ResetRequest
 
+import random
+import smtplib
+from email.mime.text import MIMEText
+from dotenv import load_dotenv
+import os
 
 from ProjectTracker.projectMain import router as project_router
 from GrowthTracker.growthMain import router as growth_router
@@ -36,17 +41,21 @@ db = UserDB()
 
 templates = Jinja2Templates(directory=".")
 
+load_dotenv()
+SMTP_EMAIL = os.getenv("SMTP_EMAIL")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+
 @app.get("/", response_class=HTMLResponse)
 def serve_authentication_portal(request: Request):
     # Pass request directly as a primary keyword argument
     return templates.TemplateResponse(request=request, name="landing/templates/auth.html")
-
 
 @app.on_event("startup") 
 def manage_startup():
     db.create_auth_table()
     db.create_session_table()
     db.create_forgot_requests_table()
+    db.create_otp_table()  
 
 def hash_password(password:str) -> str:
     #returns a hased password for the given password
@@ -58,8 +67,21 @@ def hash_password(password:str) -> str:
 def verify_password(hash_pw:str,pw:str) -> bool:
     return bcrypt.checkpw(pw.encode('utf-8'),hash_pw.encode('utf-8'))
 
+def send_otp_email(to_email: str, otp: str):
+    msg = MIMEText(f"Your password reset OTP is: {otp}\n\nValid for 10 minutes. Do not share this with anyone.")
+    msg["Subject"] = "Password Reset OTP"
+    msg["From"] = SMTP_EMAIL
+    msg["To"] = to_email
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(SMTP_EMAIL, SMTP_PASSWORD)
+        server.sendmail(SMTP_EMAIL, to_email, msg.as_string())
+
+def generate_otp() -> str:
+    return str(random.randint(100000, 999999))
+
 @app.post("/auth/register")
-def register(username:str=Form(...),password:str=Form(...)):
+def register(username:str=Form(...),password:str=Form(...),email:str=Form(...)):
     if(len(password)>72):
         raise HTTPException(
             status_code=400,
@@ -80,7 +102,7 @@ def register(username:str=Form(...),password:str=Form(...)):
             detail="User with username already exists,Login/Pick another username"
         )
     hashed_pw=hash_password(password)
-    new_user=User(username,hashed_pw,"user")
+    new_user=User(username,hashed_pw,"user",email=email)
     db.create_user(new_user)
     return {"status": "success", "message": "Account created successfully!"}
 
@@ -108,6 +130,10 @@ def login(response:Response,username:str=Form(...),password:str=Form(...)):
                         secure=True)
     return {"status":"success",
     "message":"User logged in successfully"}
+
+@app.get("/auth/forgot-password-page", response_class=HTMLResponse)
+def serve_forgot_password_page(request: Request):
+    return templates.TemplateResponse(request=request, name="landing/templates/forgot-password.html")
 
 @app.get("/track", response_class=HTMLResponse)
 def serve_project_tracker_ui(request: Request, current_user: User = Depends(get_current_user)):
@@ -154,19 +180,66 @@ def get_user_role(current_user:User=Depends(get_current_user)):
     }   
 
 @app.post("/auth/reset")
-def request_reset(username:str=Form(...),password:str=Form(...),current_user:User=Depends(get_current_user)):
-    cur_user=db.get_by_username(username)
+def request_reset(username: str = Form(None), email: str = Form(None), password: str = Form(...)):
+    if email:
+        cur_user = db.get_by_email(email.strip().lower())
+    elif username:
+        cur_user = db.get_by_username(username.strip())
+    else:
+        raise HTTPException(status_code=400, detail="Provide username or email")
+
     if not cur_user:
-        raise HTTPException(
-            status_code=404,
-            detail="No user found with given username"
-        )
-    req=ResetRequest(username,password)
+        raise HTTPException(status_code=404, detail="No user found")
+
+    if cur_user.role == "admin":
+        raise HTTPException(status_code=403, detail="Admin must use email OTP flow")
+
+    hashed_pw = hash_password(password)
+    req = ResetRequest(cur_user.name, hashed_pw)
     db.create_reset_request(req)
-    return {"status":"success","message":"Request Created successfully"}
+    return {"status": "success", "message": "Request created successfully"}
+
+@app.post("/auth/forgot-password")
+def forgot_password(username:str=Form(...),email: str = Form(...)):
+    user = db.get_by_email(email.strip().lower())
+    if not user:
+        return {"status": "success", "message": "If that email exists, an OTP has been sent"}
+    if user.name != username:
+        return {"status": "success", "message": "If that email exists, an OTP has been sent"}
+
+    otp = generate_otp()
+    hashed_otp = hash_password(otp)
+    db.store_otp(user.id, hashed_otp, expires_at=datetime.now() + timedelta(minutes=10))
+
+    try:
+        send_otp_email(user.email, otp)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to send OTP email")
+
+    return {"status": "success", "message": "If that email exists, an OTP has been sent"}
+
+
+@app.post("/auth/verify-otp")
+def verify_otp(email: str = Form(...), otp: str = Form(...), new_password: str = Form(...) ):
+    user = db.get_by_email(email.strip().lower())
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid request")
+
+    stored = db.get_otp(user.id)
+    if not stored:
+        raise HTTPException(status_code=400, detail="OTP expired or invalid")
+
+    if not verify_password(stored["otp_hash"], otp):
+        raise HTTPException(status_code=400, detail="Wrong OTP")
+
+    db.mark_otp_used(user.id)
+
+    if len(new_password) < 8 or len(new_password) > 72:
+        raise HTTPException(status_code=400, detail="Invalid password length")
+
+    db.reset_password(user.id, hash_password(new_password))
+    return {"status": "success", "role": user.role, "message": "Password reset successfully"}
     
-
-
 app.include_router(admin_router,prefix="/admin",tags=["AdminPage"],dependencies=[Depends(verify_roles(["admin"]))])
 app.include_router(project_router, prefix="/track", tags=["Project Data Feed"],dependencies=[Depends(get_current_user)])
 app.include_router(growth_router, prefix="/growth", tags=["Growth Data Feed"],dependencies=[Depends(get_current_user)])
@@ -178,3 +251,4 @@ app.mount("/landing/static", StaticFiles(directory="landing/static"), name="land
 app.mount("/track/static", StaticFiles(directory="ProjectTracker/static"), name="track_static")
 app.mount("/growth/static", StaticFiles(directory="GrowthTracker/static"), name="growth_static")
 app.mount("/value/static", StaticFiles(directory="VETracker/static"), name="value_static")
+
