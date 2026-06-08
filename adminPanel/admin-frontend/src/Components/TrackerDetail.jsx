@@ -244,6 +244,26 @@ export default function TrackerDetail() {
                 </div>
 
                 <div className="panel-form-card metric-card-full">
+                    <div className="card-label">Upcoming Tasks(for next 7 days)</div>
+                    <div className="due-today-list">
+                        {upcoming.length === 0 ? (
+                            <div className="stat-sub">No Tasks due for next 7 days</div>
+                        ) : (
+                            upcoming.map((u, idx) => (
+                                <div className="due-today-item" key={idx}>
+                                    <div className="due-today-item-title">{u.project_name}</div>
+                                    <div className="due-today-item-meta">
+                                        <span>Task: {u.column_name}</span>
+                                        <span>Status: {u.current_value}</span>
+                                        <span>Deadline: {u.deadline}</span>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+
+                <div className="panel-form-card metric-card-full">
                     <div className="card-label">Projects Completed in Last 7 Days</div>
                     <div className="due-today-list">
                         {completedLast7Days.length === 0 ? (
@@ -271,26 +291,6 @@ export default function TrackerDetail() {
                                     <div className="due-today-item-meta">
                                         <span>Task: {c.column_name}</span>
                                         <span>Status: {c.current_value}</span>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-
-                <div className="panel-form-card metric-card-full">
-                    <div className="card-label">Upcoming Tasks(for next 7 days)</div>
-                    <div className="due-today-list">
-                        {upcoming.length === 0 ? (
-                            <div className="stat-sub">No Tasks due for next 7 days</div>
-                        ) : (
-                            upcoming.map((u, idx) => (
-                                <div className="due-today-item" key={idx}>
-                                    <div className="due-today-item-title">{u.project_name}</div>
-                                    <div className="due-today-item-meta">
-                                        <span>Task: {u.column_name}</span>
-                                        <span>Status: {u.current_value}</span>
-                                        <span>Deadline: {u.deadline}</span>
                                     </div>
                                 </div>
                             ))

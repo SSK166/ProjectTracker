@@ -80,17 +80,6 @@ class UserDB:
                     )
                 """)
     
-    def create_forgot_requests_table(self):
-        with self.get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute("""CREATE TABLE  IF NOT EXISTS password_reset_requests (
-                    id SERIAL PRIMARY KEY,
-                    username TEXT UNIQUE NOT NULL,
-                    requested_password_hash TEXT NOT NULL,
-                    status TEXT DEFAULT 'PENDING', -- 'PENDING', 'APPROVED', 'REJECTED'
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )""")
-    
     def create_session(self,user_id:int,session_id:str,expires_at:datetime) -> bool:
         with self.get_conn() as conn:
             with conn.cursor() as cur:
@@ -129,20 +118,6 @@ class UserDB:
                 """,(session_id,))
                 conn.commit()
                 return True
-    
-    def create_reset_request(self, req: ResetRequest):
-        with self.get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    INSERT INTO password_reset_requests (username, requested_password_hash, status)
-                    VALUES (%s, %s, 'PENDING') 
-                    ON CONFLICT (username)
-                    DO UPDATE SET 
-                        requested_password_hash = EXCLUDED.requested_password_hash,
-                        status = 'PENDING',
-                        created_at = CURRENT_TIMESTAMP
-                """, (req.name, req.pw))
-                conn.commit()
 
     def create_user(self,user:User):
         #user creation for register

@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes, NavLink } from 'react-router-dom';
 import Summary from './Components/Summary';
 import SwitchRoles from './Components/SwitchRoles';
 import TrackerDetail from './Components/TrackerDetail';
+import RemoveUsers from './Components/RemoveUsers';
 
 function App() {
   const logout = async () => {
@@ -21,11 +22,13 @@ function App() {
       <nav className="nav-container">
         <NavLink to='/' className={({ isActive }) => isActive ? "active-tab" : "normal-tab"}>Home Summary</NavLink>
         <NavLink to='/switch' className={({ isActive }) => isActive ? "active-tab" : "normal-tab"}>Switch Roles</NavLink>
+        <NavLink to='/remove' className={({ isActive }) => isActive ? "active-tab" : "normal-tab"}>Remove Users</NavLink>
         <NavLink onClick = {logout} className="logout-btn">Logout</NavLink>
       </nav>
       <Routes>
         <Route path='/' element={<Summary/>}/>
         <Route path='/switch' element={<SwitchRoles/>}/>
+        <Route path='/remove' element={<RemoveUsers/>}/>
         <Route path='/detailed/:trackerId' element={<TrackerDetail/>}/>
       </Routes>
     </BrowserRouter>

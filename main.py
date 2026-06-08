@@ -54,7 +54,6 @@ def serve_authentication_portal(request: Request):
 def manage_startup():
     db.create_auth_table()
     db.create_session_table()
-    db.create_forgot_requests_table()
     db.create_otp_table()  
 
 def hash_password(password:str) -> str:

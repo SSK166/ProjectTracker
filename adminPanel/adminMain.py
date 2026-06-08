@@ -185,6 +185,27 @@ def update_role(username:str=Form(...),role:str=Form(...),current_user:User=Depe
         )
     return {"status":"success","message":f"User role updated to {role}"}
 
+@router.delete("/user")
+def delete_user(username:str=Form(...),current_user:User=Depends(verify_roles(["admin"]))):
+    existing_user=db.get_by_username(username)
+    if not existing_user:
+        raise HTTPException(
+            status_code=404,
+            detail="No such user exists"
+        )
+    if existing_user.id == current_user.id:
+        raise HTTPException(
+            status_code=400,
+            detail="You cannot delete your own account"
+        )
+    dlt = db.delete_user(existing_user.id)
+    if not dlt:
+        raise HTTPException(
+            status_code=500,
+            detail="Server Error. User could not be deleted"
+        )
+    return {"status":"success","message":"User deleted"}
+
 
 @router.get("/upcoming/{tracker}")
 def get_upcoming_deadlines(tracker:str,current_user: User = Depends(verify_roles(["admin"]))):
