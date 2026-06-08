@@ -36,7 +36,6 @@ export default function TrackerDetail() {
     const [worst,setWorst] = useState([]);
 
     if (!baseUrl) {
-        console.log(trackerId)
         return (
             <div style={{ padding: "40px", textAlign: "center" }}>
                 <h3>Error: Invalid tracker context requested.</h3>
@@ -56,7 +55,7 @@ export default function TrackerDetail() {
                 .sort((a, b) => b.days_overdue - a.days_overdue)
                 .slice(0, 5));
             } catch (err) {
-                console.error("Error fetching overdue backlogs:", err);
+                console.error("Error fetching backlogs:", err);
             }
         };
         fetchOverDues();
@@ -70,7 +69,7 @@ export default function TrackerDetail() {
                 const dues = await duesRes.json();
                 setDueToday(dues);
             } catch (err) {
-                console.error("Error fetching today's queues:", err);
+                console.error("Error fetching tasks that are due today:", err);
             }
         };
         fetchDueToday();
@@ -84,7 +83,7 @@ export default function TrackerDetail() {
                 const lastSeven = await lastSevenRes.json();
                 setSevenComplete(lastSeven);
             } catch (err) {
-                console.error("Error fetching rolling week streak metrics:", err);
+                console.error("Error fetching metrics of the last week:", err);
             }
         };
         fetchLastSeven();
@@ -98,7 +97,7 @@ export default function TrackerDetail() {
                 const upcomingSeven = await upcomingRes.json();
                 setUpcoming(upcomingSeven);
             } catch (err) {
-                console.error("Error fetching forward horizon schedule:", err);
+                console.error("Error fetching upcoming deadlines:", err);
             }
         };
         fetchUpcoming();
@@ -112,10 +111,11 @@ export default function TrackerDetail() {
                 const summaryData = await summaryRes.json();
                 setSummaryInfo(summaryData);
             } catch (err) {
-                console.error("Error connecting to primary summary register:", err);
+                console.error("Error connecting to basic summary endpoint:", err);
             }
         };
         fetchSummaryData();
+        
     }, [trackerId]);
 
     const trackerStats = summaryInfo?.trackers?.[trackerId] || {};
@@ -126,85 +126,109 @@ export default function TrackerDetail() {
     return (
         <div className="admin-workspace">
             <div className="dashboard-container detailed-view">
-                
-                {/* <NavLink to="/" className="back-link">← Back to Central Summary</NavLink> */}
-                
+
+                <NavLink to="/" className="back-link">← Back to central summary</NavLink>
+
                 <header className="dashboard-header">
                     <h2>{displayTitle} — Detailed Summary</h2>
                     <p>Overview of upcoming activities and existing deadlines for {displayTitle}.</p>
                 </header>
 
-                {/* Health Score Component */}
-                <div className="panel-form-card metric-card-full">
-                    <h3>Overall Tracker Health Score(In number of tasks)</h3>
-                    <div className="progress-container">
-                        <div className="progress-bar-bg">
-                            <div 
-                                className={`progress-bar-fill ${healthScorePercentage > 25 ? "nominal" : "alert"}`}
-                                style={{ width: `${healthScorePercentage}%` }} 
-                            />
+                <div className="metrics-grid">
+
+                    <div className="panel-form-card metric-card-full">
+                        <div className="card-label">Tracker health score</div>
+                        <div className={`stat-num ${healthScorePercentage > 25 ? "nominal-text" : "alert-text"}`}>
+                            {healthScorePercentage}%
                         </div>
-                        <span className="progress-percentage">{healthScorePercentage}%</span>
-                    </div>
-                </div>
-
-                {/* Completed Today Component */}
-                <div className="panel-form-card metric-card-full">
-                    <h3>Overdue tasks</h3>
-                    <div className="stat-highlight alert-text">
-                        {overDues.length} {overDues.length<=1?"Task":"Tasks"} Overdue
-                    </div>
-                </div>
-
-                {/* Completed Today Component */}
-                <div className="panel-form-card metric-card-full">
-                    <h3>Overdue for long time</h3>
-                    <div className="stat-highlight alert-text">
-                        {worst.length} {worst.length<=1?"Task":"Tasks"} Overdue
-                        <div>
-                            {worst.map((w,idx)=>{
-                                return(
-                                    <div key={idx}>
-                                        Project Name: {w.project_name}<br/>
-                                        Task : {w.column_name}<br/>
-                                        Current Status : {w.current_value}<br/>
-                                        Deadline : {w.deadline}
-                                    </div>
-                                )
-                            })}
+                        <div className="stat-sub">Tasks on track</div>
+                        <div className="progress-container">
+                            <div className="progress-bar-bg">
+                                <div
+                                    className={`progress-bar-fill ${healthScorePercentage > 25 ? "nominal" : "alert"}`}
+                                    style={{ width: `${healthScorePercentage}%` }}
+                                />
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Completed Today Component */}
-                <div className="panel-form-card metric-card-full">
-                    <h3>Completed Today</h3>
-                    <div className="stat-highlight nominal-text">
-                        {completedTodayCount} Tasks completed today
+                    <div className="panel-form-card metric-card-full">
+                        <div className="card-label">Overdue tasks</div>
+                        <div className="stat-num alert-text">
+                            {overDues.length}
+                        </div>
+                        <div className="stat-sub">
+                            {overDues.length <= 1 ? "Task" : "Tasks"} currently overdue
+                        </div>
                     </div>
+
+                    <div className="panel-form-card metric-card-full">
+                        <div className="card-label">Completed today</div>
+                        <div className="stat-num nominal-text">
+                            {completedTodayCount}
+                        </div>
+                        <div className="stat-sub">Tasks finished today</div>
+                    </div>
+
+                    <div className="panel-form-card metric-card-full">
+                        <div className="card-label">Completed last 7 days</div>
+                        <div className="stat-num nominal-text">
+                            {sevenComplete !== null ? sevenComplete.count : "—"}
+                        </div>
+                        <div className="stat-sub">
+                            {sevenComplete !== null
+                                ? `${sevenComplete.count === 1 ? "Project" : "Projects"} finished this week`
+                                : "Calculating..."}
+                        </div>
+                        <p className="developer-footnote">
+                            Tracks full projects finished over the last week.
+                        </p>
+                    </div>
+
                 </div>
-                
 
                 <div className="panel-form-card metric-card-full">
-                    <h3>Projects Completed in Last Seven Days</h3>
-                    <div className="stat-highlight nominal-text">
-                        {sevenComplete !== null ? (
-                            <>
-                                {sevenComplete.count} {sevenComplete.count === 1 ? "Project" : "Projects"} finished
-                            </>
+                    <div className="card-label">Long overdue tasks</div>
+                    <div className="worst-list">
+                        {worst.length === 0 ? (
+                            <div className="stat-sub">No long overdue tasks</div>
                         ) : (
-                            "Calculating Projects Completed in last seven days"
+                            worst.map((w, idx) => (
+                                <div className="worst-item" key={idx}>
+                                    <div className="worst-item-title">{w.project_name}</div>
+                                    <div className="worst-item-meta">
+                                        <span>Task: {w.column_name}</span>
+                                        <span>Status: {w.current_value}</span>
+                                        <span className="deadline-badge">Due: {w.deadline}</span>
+                                    </div>
+                                </div>
+                            ))
                         )}
                     </div>
-                    <p className="developer-footnote">
-                        Tracks the total number of full projects finished over the last week.
-                    </p>
                 </div>
 
-                <div>
-                    <button className="auth-btn" onClick={()=>window.location.assign(baseUrl)}>Go to Tracker</button>
+                <div className="panel-form-card metric-card-full">
+                    <div className="card-label">Tasks Due Today</div>
+                    <div className="due-today-list">
+                        {dueToday.length === 0 ? (
+                            <div className="stat-sub">No tasks due today</div>
+                        ) : (
+                            dueToday.map((d, idx) => (
+                                <div className="due-today-item" key={idx}>
+                                    <div className="due-today-item-title">{d.project_name}</div>
+                                    <div className="due-today-item-meta">
+                                        <span>Task: {d.column_name}</span>
+                                        <span>Status: {d.current_value}</span>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
                 </div>
-                {/* Tables for overDues, dueToday, worstOffenders, and upcoming will mount down here */}
+
+                <button className="cta-btn" onClick={() => window.location.assign(baseUrl)}>
+                    Go to Tracker →
+                </button>
 
             </div>
         </div>

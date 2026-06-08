@@ -61,13 +61,15 @@ def get_central_summary(current_user: User = Depends(verify_roles(["admin"]))):
                 cur.execute("""
                     SELECT COUNT(*) FROM deadlines d
                     JOIN status s ON s.project_id = d.project_id AND s.column_name = d.column_name
-                    WHERE d.deadline < %s AND s.current_value NOT IN ('Approved','Closed','Dispatched','Yes','Received')
+                    WHERE d.deadline < %s
+                    AND (s.current_value IS NULL OR s.current_value NOT IN('Approved','Closed','Dispatched','Yes','Received'))
                 """, (today,))
                 t1_alerts = cur.fetchone()[0]
                 cur.execute("""
                     SELECT COUNT(*) FROM deadlines d
                     JOIN status s ON s.project_id = d.project_id AND s.column_name = d.column_name
-                    WHERE d.deadline = %s AND s.current_value NOT IN ('Approved','Closed','Dispatched','Yes','Received')
+                    WHERE d.deadline = %s
+                    AND (s.current_value IS NULL OR s.current_value NOT IN ('Approved','Closed','Dispatched','Yes','Received'))
                 """, (today,))
                 t1_due_today = cur.fetchone()[0]
                 cur.execute("""
@@ -87,15 +89,19 @@ def get_central_summary(current_user: User = Depends(verify_roles(["admin"]))):
                 cur.execute("SELECT COUNT(*) FROM projects")
                 t3_total = cur.fetchone()[0]
                 cur.execute("""
-                    SELECT COUNT(*) FROM deadlines d
+                    SELECT COUNT(*)
+                    FROM deadlines d
                     JOIN status s ON s.project_id = d.project_id AND s.column_name = d.column_name
-                    WHERE d.deadline < %s AND s.current_value NOT IN ('Received', 'Connected', 'Completed', 'KLD Shared')
+                    WHERE d.deadline < %s
+                    AND (s.current_value IS NULL OR s.current_value NOT IN ('Received', 'Connected', 'Completed', 'KLD Shared'))
                 """, (today,))
                 t3_alerts = cur.fetchone()[0]
                 cur.execute("""
-                    SELECT COUNT(*) FROM deadlines d
+                    SELECT COUNT(*)
+                    FROM deadlines d
                     JOIN status s ON s.project_id = d.project_id AND s.column_name = d.column_name
-                    WHERE d.deadline = %s AND s.current_value NOT IN ('Received', 'Connected', 'Completed', 'KLD Shared')
+                    WHERE d.deadline = %s
+                    AND (s.current_value IS NULL OR s.current_value NOT IN ('Received', 'Connected', 'Completed', 'KLD Shared'))
                 """, (today,))
                 t3_due_today = cur.fetchone()[0]
                 cur.execute("""
@@ -117,13 +123,15 @@ def get_central_summary(current_user: User = Depends(verify_roles(["admin"]))):
                 cur.execute("""
                     SELECT COUNT(*) FROM deadlines d
                     JOIN status s ON s.project_id = d.project_id AND s.column_name = d.column_name
-                    WHERE d.deadline < %s AND s.current_value NOT IN ('Completed','Shared')
+                    WHERE d.deadline < %s
+                    AND (s.current_value IS NULL OR s.current_value NOT IN ('Completed','Shared'))
                 """, (today,))
                 t4_alerts = cur.fetchone()[0]
                 cur.execute("""
                     SELECT COUNT(*) FROM deadlines d
                     JOIN status s ON s.project_id = d.project_id AND s.column_name = d.column_name
-                    WHERE d.deadline = %s AND s.current_value NOT IN ('Completed','Shared')
+                    WHERE d.deadline = %s
+                    AND (s.current_value IS NULL OR s.current_value NOT IN ('Completed','Shared'))
                 """, (today,))
                 t4_due_today = cur.fetchone()[0]
                 cur.execute("""
