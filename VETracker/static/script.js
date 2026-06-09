@@ -55,7 +55,6 @@ function normalize(str) {
 async function loadProjects() {
     const res = await fetch("/value/api/projects")
     const projects = await res.json()
-    // console.log(`Projects : ${projects}`)
     const list = document.getElementById("project-list")    
     list.innerHTML = ""
     
@@ -83,8 +82,6 @@ async function loadProjects() {
         const div = document.createElement("div")
         div.className = "project-item"
         const nameReg=name.split("-");
-        // console.log(nameReg.toString());
-        // console.log(nameReg[3])
         div.textContent = nameReg[nameReg.length-2].slice(1)+" - "+nameReg[nameReg.length-1].slice(1)
         div.dataset.fullname=name;
         div.onclick = () => {selectProject(name, div);
@@ -154,7 +151,6 @@ function renderTable(rows) {
 
     // Build headers from first row keys
     const allKeys = Object.keys(rows[0]).filter(k=>k!="_health" && k!="red_cols" && k!="yellow_cols")
-    console.log(`Keys : ${allKeys}`);
     const head = document.getElementById("table-head")
     const body = document.getElementById("table-body")
     head.innerHTML = `<tr>${allKeys.map(k => `<th>${k}</th>`).join("")}</tr>`
@@ -199,8 +195,6 @@ function renderAlerts(alerts){
     alertCount.textContent = `(${alerts.length})`
 
     const keys = Object.keys(alerts[0]).filter(k => k !== "project_id")
-    console.log(`Alert Keys : ${keys}`)
-
     alerts.forEach(a => {
 
         const tr = document.createElement("tr")
@@ -283,8 +277,6 @@ async function openPanel(row) {
         fetch(`/value/api/eta/${row.id}`)
     ])
     const etaRes=await etaVal.json();
-    // console.log(etaRes);
-    // console.log(etaRes["eta"])
     const statusData = await statusRes.json()
     const deadlineData = await deadlineRes.json()
 
@@ -354,7 +346,6 @@ async function openPanel(row) {
             ${hint}
         </div>`
     })
-    console.log(`Completion Map : ${JSON.stringify(completionMap)}`)
     document.getElementById("panel-body").innerHTML = html
     document.getElementById("side-panel").classList.add("open")
     document.getElementById("overlay").classList.add("active")
@@ -408,7 +399,6 @@ async function savePanel() {
     if (activeProject) {
         const res = await fetch(`/value/api/projects/${encodeURIComponent(activeProject.dataset.fullname)}`)
         const rows = await res.json()
-        console.log(`Rows : ${JSON.stringify(rows)}`)
         const alertsRes = await fetch(`/value/api/alerts/${encodeURIComponent(activeProject.dataset.fullname)}`)
         const alerts=await alertsRes.json()
         const duesRes = await fetch(`/value/api/due-today/${encodeURIComponent(activeProject.dataset.fullname)}`)
@@ -482,7 +472,6 @@ async function loadAlerts() {
     overdueCountBtn.textContent = alerts.length > 0 ? `(${alerts.length})` : ""
 
     if (alerts.length === 0) {
-        // console.log("Now");
         body.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#888;padding:24px">No overdue items</td></tr>`
         return
     }

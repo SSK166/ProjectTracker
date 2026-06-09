@@ -465,7 +465,6 @@ async function loadAlerts() {
     overdueCountBtn.textContent = alerts.length > 0 ? `(${alerts.length})` : ""
 
     if (alerts.length === 0) {
-        // console.log("Now");
         body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#888;padding:24px">No overdue items</td></tr>`
         return
     }

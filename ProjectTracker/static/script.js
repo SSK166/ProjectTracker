@@ -366,7 +366,6 @@ async function openPanel(row) {
         </div>`
     })
 
-    console.log(`Completion Map : ${JSON.stringify(completionMap)}`)
 
     document.getElementById("panel-body").innerHTML = html
     document.getElementById("side-panel").classList.add("open")
@@ -410,7 +409,6 @@ async function savePanel() {
     if (activeProject) {
         const res = await fetch(`/track/api/projects/${encodeURIComponent(activeProject.textContent)}`)
         const rows = await res.json()
-        console.log(`Rows : ${rows}`)
         const alertsRes = await fetch(`/track/api/alerts/${encodeURIComponent(activeProject.textContent)}`)
         const alerts=await alertsRes.json()
         const duesRes = await fetch(`/track/api/due-today/${encodeURIComponent(activeProject.textContent)}`)
@@ -484,7 +482,6 @@ async function loadAlerts() {
     overdueCountBtn.textContent = alerts.length > 0 ? `(${alerts.length})` : ""
 
     if (alerts.length === 0) {
-        // console.log("Now");
         body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#888;padding:24px">No overdue items</td></tr>`
         return
     }
