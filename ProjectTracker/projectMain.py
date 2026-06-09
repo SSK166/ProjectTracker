@@ -239,17 +239,28 @@ def update_status(project_id: int, data: dict = Body(...),current_user:User=Depe
     GREEN_VALUES = ["Approved", "Closed", "Dispatched", "Yes", "Received"]
 
     for col, value in data.items():
-        completion_date = today if value in GREEN_VALUES else None
+    # fetch existing state first
+        cur2 = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur2.execute("SELECT current_value, completion_date FROM status WHERE project_id=%s AND column_name=%s", (project_id, col))
+        existing = cur2.fetchone()
+        cur2.close()
+
+        was_green = existing and existing["current_value"] in GREEN_VALUES
+        is_green = value in GREEN_VALUES
+
+        if is_green and not was_green:
+            completion_date = today       # newly completed → stamp today
+        elif is_green and was_green:
+            completion_date = existing["completion_date"]  # preserve (even if NULL)
+        else:
+            completion_date = None        # not complete
+
         cur.execute("""
             INSERT INTO status (project_id, column_name, current_value, completion_date)
             VALUES (%s, %s, %s, %s)
             ON CONFLICT(project_id, column_name) DO UPDATE SET
                 current_value = EXCLUDED.current_value,
-                completion_date = CASE
-                    WHEN EXCLUDED.current_value IN ('Approved','Closed','Dispatched','Yes','Received')
-                    THEN COALESCE(status.completion_date, EXCLUDED.completion_date)
-                    ELSE NULL
-                END
+                completion_date = EXCLUDED.completion_date
         """, (project_id, col, value, completion_date))
     # Note: PostgreSQL ON CONFLICT syntax uses EXCLUDED.column instead of bare values
 
@@ -410,8 +421,8 @@ async def import_excel(file: UploadFile = File(...),current_user:User=Depends(ve
                         except Exception:
                             pass
 
-                if completion_date is None and value in GREEN_VALUES:
-                    completion_date = date.today().isoformat()
+                # if completion_date is None and value in GREEN_VALUES:
+                #     completion_date = date.today().isoformat()
 
                 cur.execute("""
                     INSERT INTO status (project_id, column_name, current_value, completion_date)

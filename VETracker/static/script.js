@@ -354,7 +354,7 @@ async function openPanel(row) {
             ${hint}
         </div>`
     })
-
+    console.log(`Completion Map : ${JSON.stringify(completionMap)}`)
     document.getElementById("panel-body").innerHTML = html
     document.getElementById("side-panel").classList.add("open")
     document.getElementById("overlay").classList.add("active")
@@ -408,6 +408,7 @@ async function savePanel() {
     if (activeProject) {
         const res = await fetch(`/value/api/projects/${encodeURIComponent(activeProject.dataset.fullname)}`)
         const rows = await res.json()
+        console.log(`Rows : ${JSON.stringify(rows)}`)
         const alertsRes = await fetch(`/value/api/alerts/${encodeURIComponent(activeProject.dataset.fullname)}`)
         const alerts=await alertsRes.json()
         const duesRes = await fetch(`/value/api/due-today/${encodeURIComponent(activeProject.dataset.fullname)}`)
