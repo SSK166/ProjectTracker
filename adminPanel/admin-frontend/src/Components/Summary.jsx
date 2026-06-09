@@ -39,6 +39,7 @@ export default function Summary() {
                 {/* Grid Mapping Engine */}
                 <div className="tracker-grid">
                     {Object.keys(summary.trackers).map((trackerKey, id) => {
+                        console.log(`Tracker Key: ${trackerKey}`)
                         const tracker = summary.trackers[trackerKey];
                         const hasAlerts = tracker.alerts > 0;
                         const hasDueToday=tracker["due_today"]>0;

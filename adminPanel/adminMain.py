@@ -21,29 +21,32 @@ from userdb import User,UserDB
 router=APIRouter()
 db=UserDB()
 
-tracker_db_params={"host":os.getenv('DB_HOST'),
-            "port":os.getenv('DB_PORT'),
-            "user":os.getenv('DB_USER'),
-            "password":os.getenv('DB_PASSWORD')}
+from psycopg2 import pool as pg_pool
 
+_pools = {}
 
-
-def get_conn(tracker:str):
-    if(tracker=="project_tracker"):
-        db_name="PROJECT_DB_NAME"
-    elif(tracker=="growth_tracker"):
-        db_name="GROWTH_DB_NAME"
-    elif(tracker=="ve_tracker"):
-        db_name="VALUE_DB_NAME"
-    else:
-        raise HTTPException(
-            status_code=400,
-            detail="No such database found"
+def _get_pool(tracker: str):
+    if tracker not in _pools:
+        if tracker == "project_tracker":
+            db_name = "PROJECT_DB_NAME"
+        elif tracker == "growth_tracker":
+            db_name = "GROWTH_DB_NAME"
+        elif tracker == "ve_tracker":
+            db_name = "VALUE_DB_NAME"
+        else:
+            raise HTTPException(status_code=400, detail="No such database found")
+        _pools[tracker] = pg_pool.ThreadedConnectionPool(
+            minconn=1, maxconn=5,
+            host=os.getenv("DB_HOST"),
+            port=os.getenv("DB_PORT"),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_PASSWORD"),
+            dbname=os.getenv(db_name),
         )
-    params={**tracker_db_params,"dbname":os.getenv(db_name)}
-    conn = psycopg2.connect(**params)
-    conn.cursor_factory = psycopg2.extras.RealDictCursor
-    return conn
+    return _pools[tracker]
+
+def get_conn(tracker: str):
+    return _get_pool(tracker).getconn()
 
 @router.get("/summary")
 def get_central_summary(current_user: User = Depends(verify_roles(["admin"]))):
@@ -58,7 +61,7 @@ def get_central_summary(current_user: User = Depends(verify_roles(["admin"]))):
     conn = None
     try:
         conn=get_conn("project_tracker")
-        with conn.cursor() as cur:
+        with conn.cursor() as cur:            
             cur.execute("SELECT COUNT(*) FROM projects")
             t1_total = cur.fetchone()[0]
             cur.execute("""
@@ -92,7 +95,7 @@ def get_central_summary(current_user: User = Depends(verify_roles(["admin"]))):
         summary_data["trackers"]["project_tracker"] = {"error": f"Database offline: {str(e)}"}
     finally:
         if conn:
-            conn.close()
+            _get_pool("project_tracker").putconn(conn)
 
     # --- SCANNING GROWTH TRACKER ---
     conn = None
@@ -134,7 +137,7 @@ def get_central_summary(current_user: User = Depends(verify_roles(["admin"]))):
         summary_data["trackers"]["growth_tracker"] = {"error": f"Database offline: {str(e)}"}
     finally:
         if conn:
-            conn.close()
+            _get_pool("growth_tracker").putconn(conn)
 
     # --- SCANNING VALUE ENGINEERING TRACKER ---
     conn = None
@@ -174,7 +177,7 @@ def get_central_summary(current_user: User = Depends(verify_roles(["admin"]))):
         summary_data["trackers"]["ve_tracker"] = {"error": f"Database offline: {str(e)}"}
     finally:
         if conn:
-            conn.close()
+            _get_pool("ve_tracker").putconn(conn)
 
     return summary_data
 
@@ -238,14 +241,14 @@ def get_upcoming_deadlines(tracker:str,current_user: User = Depends(verify_roles
         raise HTTPException(status_code=500, detail=f"Database execution trace failure: {str(e)}")
     finally:
         if conn:
-            conn.close()
+            _get_pool(tracker).putconn(conn)
                 
 @router.get('/last-7-days-complete-projects/{tracker}')
 def get_projects_completed_in_last_7_days(tracker:str,current_user:User=Depends(verify_roles(["admin"]))):
     conn = None
     try:
         conn=get_conn(tracker)
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             if tracker=="project_tracker":
                 col="Project Status"
                 val="Approved"
@@ -274,14 +277,14 @@ def get_projects_completed_in_last_7_days(tracker:str,current_user:User=Depends(
         raise HTTPException(status_code=500, detail=f"Database execution trace failure: {str(e)}")
     finally:
         if conn:
-            conn.close()
+            _get_pool(tracker).putconn(conn)
 
 @router.get('/today-complete-tasks/{tracker}')
 def get_tasks_completed_today(tracker:str,current_user:User=Depends(verify_roles(["admin"]))):
     conn = None
     try:
         conn=get_conn(tracker)
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("""
                 SELECT p.id,p.project_name,s.column_name,s.current_value
                 FROM status s join projects p
@@ -294,6 +297,6 @@ def get_tasks_completed_today(tracker:str,current_user:User=Depends(verify_roles
         raise HTTPException(status_code=500, detail=f"Database execution trace failure: {str(e)}")
     finally:
         if conn:
-            conn.close()
+            _get_pool(tracker).putconn(conn)
 
 

@@ -116,8 +116,7 @@ export default function TrackerDetail() {
                 console.error("Error in fetching the projects completed in last 7 days:", err);
             }
         };
-        fetchcompletedLast7Days();
-        
+        fetchcompletedLast7Days();        
     }, [title]);
 
     useEffect(() => {
@@ -131,7 +130,6 @@ export default function TrackerDetail() {
             }
         };
         fetchTasksCompletedToday();
-        
     }, [title]);
 
     const trackerStats = summaryInfo?.trackers?.[trackerId] || {};
