@@ -80,7 +80,7 @@ document.addEventListener("DOMContentLoaded", () => {//to ensure that HTML eleme
                 displayMessage("Credentials validated. Redirecting profile...", false);
                 
                 // Inspect role profile configuration to resolve dynamic route target
-                const checkUser = await fetch('/auth/protected');
+                const checkUser = await fetch('/auth/protected',{credentials:'include'});
                 const userProfile = await checkUser.json();
 
                 if (userProfile.role === 'admin') {

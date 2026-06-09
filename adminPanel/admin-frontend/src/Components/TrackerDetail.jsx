@@ -53,7 +53,7 @@ export default function TrackerDetail() {
                 const alerts = await alertsRes.json();
                 setoverDues(alerts);
                 setWorst([...alerts]
-                .sort((a, b) => b.days_overdue - a.days_overdue)
+                .sort((a, b) => a.deadline.localeCompare(b.deadline))
                 .slice(0, 5));
             } catch (err) {
                 console.error("Error in fetching backlogs:", err);

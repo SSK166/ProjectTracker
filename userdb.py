@@ -4,6 +4,7 @@ import psycopg2.extras
 from dotenv import load_dotenv
 import os
 from datetime import datetime
+from psycopg2 import pool
 
 load_dotenv()
 
@@ -30,15 +31,21 @@ class UserDB:
             "user":os.getenv('DB_USER'),
             "password":os.getenv('DB_PASSWORD')
         }
+        self.pool = psycopg2.pool.ThreadedConnectionPool(
+            minconn=2,
+            maxconn=10,
+            **self.db_params
+        )
     
     def get_conn(self):
-        conn = psycopg2.connect(**self.db_params)#unpacking
+        conn = self.pool.getconn()#unpacking
         # This forces every cursor spawned by this connection to be a RealDictCursor automatically
         conn.cursor_factory = psycopg2.extras.RealDictCursor
         return conn
 
     def create_otp_table(self):
-        with self.get_conn() as conn:
+        conn = self.get_conn()
+        try:
             with conn.cursor() as cur:
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS otp_requests (
@@ -51,10 +58,14 @@ class UserDB:
                     )
                 """)
                 conn.commit()
+        finally:
+            if conn:
+                self.pool.putconn(conn)
 
     def create_auth_table(self):
         #creating tables
-        with self.get_conn() as conn:
+        conn=self.get_conn()
+        try:
             with conn.cursor() as cursor:
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS auth (
@@ -66,9 +77,13 @@ class UserDB:
                     )
                 """)
                 conn.commit()
+        finally:
+            if conn:
+                self.pool.putconn(conn)
     
     def create_session_table(self):
-        with self.get_conn() as conn:
+        conn=self.get_conn()
+        try:
             with conn.cursor() as cur:
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS sessions(
@@ -79,9 +94,13 @@ class UserDB:
                         FOREIGN KEY(user_id) REFERENCES auth(id) ON DELETE CASCADE
                     )
                 """)
+        finally:
+            if conn:
+                self.pool.putconn(conn)
     
     def create_session(self,user_id:int,session_id:str,expires_at:datetime) -> bool:
-        with self.get_conn() as conn:
+        conn=self.get_conn()
+        try:
             with conn.cursor() as cur:
                 cur.execute("""
                     INSERT INTO sessions(session_id,user_id,expires_at)
@@ -89,9 +108,13 @@ class UserDB:
                 """,(session_id,user_id,expires_at))
                 conn.commit()
                 return True
+        finally:
+            if conn:
+                self.pool.putconn(conn)
     
     def get_user_by_session(self,session_id:int) -> User:
-        with self.get_conn() as conn:
+        conn=self.get_conn()
+        try:
             with conn.cursor() as cur:
                 cur.execute("""
                     SELECT u.* FROM
@@ -103,9 +126,13 @@ class UserDB:
                 if row is None:
                     return None
                 return User(row["username"],row["password"],row["role"],row["id"],row["email"])
+        finally:
+            if conn:
+                self.pool.putconn(conn)
     
     def delete_session(self,session_id:int)->bool:
-        with self.get_conn() as conn:
+        conn=self.get_conn()
+        try:
             with conn.cursor() as cur:
                 cur.execute("""
                     SELECT * FROM sessions where session_id=%s
@@ -118,19 +145,27 @@ class UserDB:
                 """,(session_id,))
                 conn.commit()
                 return True
+        finally:
+            if conn:
+                self.pool.putconn(conn)
 
     def create_user(self,user:User):
         #user creation for register
-        with self.get_conn() as conn:
+        conn=self.get_conn()
+        try:
             with conn.cursor() as cur:
                 cur.execute("""
                     INSERT INTO auth(username,password,role,email)
                     VALUES (%s,%s,%s,%s)
                 """,(user.name,user.pw,user.role,user.email))
                 conn.commit()
+        finally:
+            if conn:
+                self.pool.putconn(conn)
     
     def get_by_username(self,name:str):
-        with self.get_conn() as conn:
+        conn=self.get_conn()
+        try:
             with conn.cursor() as cur:
                 cur.execute("""
                     SELECT * FROM auth 
@@ -147,9 +182,13 @@ class UserDB:
                     )
                 else:
                     return None
+        finally:
+            if conn:
+                self.pool.putconn(conn)
 
     def get_all_users(self):
-        with self.get_conn() as conn:
+        conn=self.get_conn()
+        try:
             with conn.cursor() as cur:
                 cur.execute("""
                     SELECT * FROM auth
@@ -160,9 +199,13 @@ class UserDB:
                         row["role"],
                         row["id"],
                         row["email"]) for row in rows]
+        finally:
+            if conn:
+                self.pool.putconn(conn)
     
     def switch_role(self,user_id:int,new_role:str) -> bool:
-        with self.get_conn() as conn:
+        conn=self.get_conn()
+        try:
             with conn.cursor() as cur:
                 cur.execute("""
                     SELECT * FROM auth WHERE id=%s
@@ -175,9 +218,13 @@ class UserDB:
                 """,(new_role,user_id))
                 conn.commit()
                 return True
+        finally:
+            if conn:
+                self.pool.putconn(conn)
     
     def delete_user(self,user_id:int) -> bool:
-        with self.get_conn() as conn:
+        conn=self.get_conn()
+        try:
             with conn.cursor() as cur:
                 cur.execute("""
                     SELECT * FROM auth WHERE id=%s
@@ -190,8 +237,13 @@ class UserDB:
                 """,(user_id,))
                 conn.commit()
                 return True
+        finally:
+            if conn:
+                self.pool.putconn(conn)
+
     def get_by_email(self,email:str)->User:
-        with self.get_conn() as conn:
+        conn=self.get_conn()
+        try:
             with conn.cursor() as cur:
                 cur.execute("""
                     SELECT * FROM auth 
@@ -206,16 +258,25 @@ class UserDB:
                         row["email"])
                 else:
                     return None
+        finally:
+            if conn:
+                self.pool.putconn(conn)
+
     def reset_password(self,user_id:int,hashed_pw:str):
-        with self.get_conn() as conn:
+        conn=self.get_conn()
+        try:
             with conn.cursor() as cur:
                 cur.execute("""
                     UPDATE auth SET password = %s WHERE id=%s
                 """,(hashed_pw,user_id,))
                 conn.commit()
+        finally:
+            if conn:
+                self.pool.putconn(conn)
                 
     def store_otp(self, user_id: int, otp_hash: str, expires_at):
-        with self.get_conn() as conn:
+        conn=self.get_conn()
+        try:
             with conn.cursor() as cur:
                 cur.execute("""
                     INSERT INTO otp_requests(user_id, otp_hash, expires_at, used)
@@ -227,21 +288,32 @@ class UserDB:
                         used = false
                 """, (user_id, otp_hash, expires_at))
                 conn.commit()
+        finally:
+            if conn:
+                self.pool.putconn(conn)
 
     def get_otp(self, user_id: int):
-        with self.get_conn() as conn:
+        conn=self.get_conn()
+        try:
             with conn.cursor() as cur:
                 cur.execute("""
                     SELECT * FROM otp_requests 
                     WHERE user_id = %s AND used = false AND expires_at > %s
                 """, (user_id, datetime.now()))
                 return cur.fetchone()
+        finally:
+            if conn:
+                self.pool.putconn(conn)
 
     def mark_otp_used(self, user_id: int):
-        with self.get_conn() as conn:
+        conn=self.get_conn()
+        try:
             with conn.cursor() as cur:
                 cur.execute("UPDATE otp_requests SET used = true WHERE user_id = %s", (user_id,))
                 conn.commit()
+        finally:
+            if conn:
+                self.pool.putconn(conn)
         
 
 
