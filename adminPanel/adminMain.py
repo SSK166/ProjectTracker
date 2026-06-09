@@ -55,9 +55,9 @@ def get_central_summary(current_user: User = Depends(verify_roles(["admin"]))):
     }
     
     # --- SCANNING PROJECT TRACKER ---
+    conn = None
     try:
-        from ProjectTracker.projectMain import get_conn as t1_conn
-        conn = t1_conn()
+        conn=get_conn("project_tracker")
         with conn.cursor() as cur:
             cur.execute("SELECT COUNT(*) FROM projects")
             t1_total = cur.fetchone()[0]
@@ -95,9 +95,9 @@ def get_central_summary(current_user: User = Depends(verify_roles(["admin"]))):
             conn.close()
 
     # --- SCANNING GROWTH TRACKER ---
+    conn = None
     try:
-        from GrowthTracker.growthMain import get_conn as t3_conn
-        conn=t3_conn()
+        conn = get_conn("growth_tracker")
         with conn.cursor() as cur:
             cur.execute("SELECT COUNT(*) FROM projects")
             t3_total = cur.fetchone()[0]
@@ -137,9 +137,9 @@ def get_central_summary(current_user: User = Depends(verify_roles(["admin"]))):
             conn.close()
 
     # --- SCANNING VALUE ENGINEERING TRACKER ---
+    conn = None
     try:
-        from VETracker.valueMain import get_conn as t4_conn
-        conn=t4_conn()
+        conn=get_conn("ve_tracker")
         with conn.cursor() as cur:
             cur.execute("SELECT COUNT(*) FROM projects")
             t4_total = cur.fetchone()[0]
@@ -218,6 +218,7 @@ def delete_user(username:str=Form(...),current_user:User=Depends(verify_roles(["
 
 @router.get("/upcoming/{tracker}")
 def get_upcoming_deadlines(tracker:str,current_user: User = Depends(verify_roles(["admin"]))):
+    conn = None # to prevent NameError risk 
     try:
         conn=get_conn(tracker)
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -241,6 +242,7 @@ def get_upcoming_deadlines(tracker:str,current_user: User = Depends(verify_roles
                 
 @router.get('/last-7-days-complete-projects/{tracker}')
 def get_projects_completed_in_last_7_days(tracker:str,current_user:User=Depends(verify_roles(["admin"]))):
+    conn = None
     try:
         conn=get_conn(tracker)
         with conn.cursor() as cur:
@@ -253,6 +255,11 @@ def get_projects_completed_in_last_7_days(tracker:str,current_user:User=Depends(
             elif tracker=="ve_tracker":
                 col="Status"
                 val="Completed"
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No such database found"
+                )
             cur.execute("""select p.id,p.project_name,s.column_name,s.completion_date AS comp_date
                 from projects p join status s
                 on p.id=s.project_id
@@ -261,6 +268,8 @@ def get_projects_completed_in_last_7_days(tracker:str,current_user:User=Depends(
             ,(col,val))
             rows =cur.fetchall()
             return {"status":"success","tasks":rows}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database execution trace failure: {str(e)}")
     finally:
@@ -269,6 +278,7 @@ def get_projects_completed_in_last_7_days(tracker:str,current_user:User=Depends(
 
 @router.get('/today-complete-tasks/{tracker}')
 def get_tasks_completed_today(tracker:str,current_user:User=Depends(verify_roles(["admin"]))):
+    conn = None
     try:
         conn=get_conn(tracker)
         with conn.cursor() as cur:

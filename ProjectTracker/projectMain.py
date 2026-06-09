@@ -360,8 +360,6 @@ def delete_project(project_id: int,current_user:User=Depends(verify_roles(["admi
     try:
         cur = conn.cursor()
         cur.execute("DELETE FROM projects WHERE id = %s", (project_id,))
-        cur.execute("DELETE FROM status WHERE project_id = %s", (project_id,))
-        cur.execute("DELETE FROM deadlines WHERE project_id = %s", (project_id,))
         conn.commit()
         cur.close()
         return {"status": "ok"}

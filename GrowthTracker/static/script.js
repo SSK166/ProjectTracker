@@ -451,7 +451,7 @@ function switchTab(tab) {
     }
     else if (tab === "import-excel-tab") {
         document.getElementById("import-excel-tab").style.display = "flex"
-        document.querySelector(".tab-btn:last-child").classList.add("active")
+        document.querySelector(".tab-btn:nth-child(6)").classList.add("active")
     }
 }
 

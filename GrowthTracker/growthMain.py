@@ -362,8 +362,6 @@ def delete_project(project_id: int,current_user:User=Depends(verify_roles(["admi
     try:
         cur = conn.cursor()
         cur.execute("DELETE FROM projects WHERE id = %s", (project_id,))
-        cur.execute("DELETE FROM status WHERE project_id = %s", (project_id,))
-        cur.execute("DELETE FROM deadlines WHERE project_id = %s", (project_id,))
         conn.commit()
         cur.close()
         return {"status": "ok"}
@@ -441,9 +439,8 @@ async def import_excel(file: UploadFile = File(...),current_user:User=Depends(ve
         sheet = xl.sheet_names[0]
         df = xl.parse(sheet_name=sheet)
         xl.close()
-
+        df.columns=df.columns.str.strip()
         if "Project Description" in df.columns:#Project Description
-            df.columns=df.columns.str.strip()
             df = df.rename(columns={
                 "Project Description": "project_name",
                 "Packaging Type": "packaging_type",

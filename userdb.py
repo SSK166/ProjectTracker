@@ -94,6 +94,7 @@ class UserDB:
                         FOREIGN KEY(user_id) REFERENCES auth(id) ON DELETE CASCADE
                     )
                 """)
+            conn.commit()
         finally:
             if conn:
                 self.pool.putconn(conn)
