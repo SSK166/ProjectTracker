@@ -15,7 +15,7 @@ from starlette.background import BackgroundTask
 import openpyxl
 from openpyxl.utils import get_column_letter
 
-from dependencies import get_current_user,verify_roles
+from dependencies import get_current_user,verify_roles, get_ist_now, get_ist_date
 from userdb import User,UserDB
 
 router=APIRouter()
@@ -50,10 +50,10 @@ def get_conn(tracker: str):
 
 @router.get("/summary")
 def get_central_summary(current_user: User = Depends(verify_roles(["admin"]))):
-    today = date.today().isoformat()
+    today = get_ist_date().isoformat()
     summary_data = {
         "status": "success",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": get_ist_now().isoformat(),
         "trackers": {}
     }
     
@@ -230,11 +230,11 @@ def get_upcoming_deadlines(tracker:str,current_user: User = Depends(verify_roles
                 FROM deadlines d
                 JOIN projects p ON p.id = d.project_id
                 JOIN status s ON s.project_id = d.project_id AND s.column_name = d.column_name
-                WHERE d.deadline > CURRENT_DATE 
-                    AND d.deadline <= CURRENT_DATE + INTERVAL '7 days'
+                WHERE d.deadline > %s 
+                    AND d.deadline <= %s + INTERVAL '7 days'
                     AND s.current_value NOT IN ('Approved','Closed','Dispatched','Completed','Shared','Received','Yes')
                 ORDER BY d.deadline ASC
-            """)
+            """,(get_ist_date(),get_ist_date()))
             rows = cur.fetchall()
         return rows
     except Exception as e:
@@ -290,7 +290,7 @@ def get_tasks_completed_today(tracker:str,current_user:User=Depends(verify_roles
                 FROM status s join projects p
                 ON p.id=s.project_id
                 WHERE completion_date = %s"""
-            ,(date.today().isoformat(),))
+            ,(get_ist_date().isoformat(),))
             rows =cur.fetchall()
             return {"status":"success","tasks":rows}
     except Exception as e:

@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse
 from datetime import date
 
 #Import from userdb
-from dependencies import get_current_user,verify_roles
+from dependencies import get_current_user,verify_roles,get_ist_now
 from userdb import User,UserDB,ResetRequest
 
 import random
@@ -120,7 +120,7 @@ def login(response:Response,username:str=Form(...),password:str=Form(...)):
             detail="Incorrect Username/Password"
         )
     session_id=uuid.uuid4().hex
-    db.create_session(existing_user.id,session_id,expires_at=datetime.now()+timedelta(days=7))
+    db.create_session(existing_user.id,session_id,expires_at=get_ist_now+timedelta(days=7))
     # print(f"User {existing_user.name} Role {existing_user.role}")
     response.set_cookie(key="session_id",
                         value=session_id,
@@ -178,25 +178,6 @@ def get_user_role(current_user:User=Depends(get_current_user)):
         "username":current_user.name
     }   
 
-@app.post("/auth/reset")
-def request_reset(username: str = Form(None), email: str = Form(None), password: str = Form(...)):
-    if email:
-        cur_user = db.get_by_email(email.strip().lower())
-    elif username:
-        cur_user = db.get_by_username(username.strip())
-    else:
-        raise HTTPException(status_code=400, detail="Provide username or email")
-
-    if not cur_user:
-        raise HTTPException(status_code=404, detail="No user found")
-
-    if cur_user.role == "admin":
-        raise HTTPException(status_code=403, detail="Admin must use email OTP flow")
-
-    hashed_pw = hash_password(password)
-    req = ResetRequest(cur_user.name, hashed_pw)
-    db.create_reset_request(req)
-    return {"status": "success", "message": "Request created successfully"}
 
 @app.post("/auth/forgot-password")
 def forgot_password(username:str=Form(...),email: str = Form(...)):
@@ -208,7 +189,7 @@ def forgot_password(username:str=Form(...),email: str = Form(...)):
 
     otp = generate_otp()
     hashed_otp = hash_password(otp)
-    db.store_otp(user.id, hashed_otp, expires_at=datetime.now() + timedelta(minutes=10))
+    db.store_otp(user.id, hashed_otp, expires_at=get_ist_now + timedelta(minutes=10))
 
     try:
         send_otp_email(user.email, otp)
@@ -234,7 +215,7 @@ def verify_otp(email: str = Form(...), otp: str = Form(...), new_password: str =
     db.mark_otp_used(user.id)
 
     if len(new_password) < 8 or len(new_password) > 72:
-        raise HTTPException(status_code=400, detail="Invalid password length")
+        raise HTTPException(status_code=400, detail="Invalid password length - Password must be at least 8 characters long and at most 72 characters long")
 
     db.reset_password(user.id, hash_password(new_password))
     return {"status": "success", "role": user.role, "message": "Password reset successfully"}

@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import os
 from datetime import datetime
 from psycopg2 import pool
+from dependencies import get_ist_now
 
 load_dotenv()
 
@@ -122,7 +123,7 @@ class UserDB:
                     auth u JOIN sessions s
                     ON s.user_id=u.id
                     WHERE s.session_id = %s and s.expires_at > %s
-                """,(session_id,datetime.now()))
+                """,(session_id,get_ist_now))
                 row=cur.fetchone()
                 if row is None:
                     return None
@@ -300,7 +301,7 @@ class UserDB:
                 cur.execute("""
                     SELECT * FROM otp_requests 
                     WHERE user_id = %s AND used = false AND expires_at > %s
-                """, (user_id, datetime.now()))
+                """, (user_id, get_ist_now))
                 return cur.fetchone()
         finally:
             if conn:

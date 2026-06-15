@@ -3,6 +3,7 @@ from fastapi import Request, HTTPException, Depends
 from typing import List
 from userdb import User, UserDB
 from fastapi.responses import RedirectResponse
+from datetime import datetime, timedelta, timezone
 
 
 db = UserDB()
@@ -39,3 +40,10 @@ def verify_roles(approved_roles: List[str]):
             )
         return current_user
     return dependency
+
+IST = timezone(timedelta(hours=5, minutes=30))
+
+def get_ist_now():
+    return datetime.now(IST)
+def get_ist_date():
+    return datetime.now(IST).date()

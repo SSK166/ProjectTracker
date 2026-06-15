@@ -15,7 +15,7 @@ from starlette.background import BackgroundTask
 import openpyxl
 from openpyxl.utils import get_column_letter
 
-from dependencies import get_current_user,verify_roles
+from dependencies import get_current_user,verify_roles,get_ist_date
 from userdb import User
 
 load_dotenv()
@@ -91,7 +91,7 @@ def get_project_rows(project_name: str,current_user:User=Depends(get_current_use
         rows = cur.fetchall()
 
         result = []
-        today = date.today().isoformat()
+        today = get_ist_date().isoformat()
         TEXT_COLS = ["Comments"]
 
         for row in rows:
@@ -186,7 +186,7 @@ def get_alerts(current_user:User=Depends(get_current_user)):
     conn = get_conn()
     try:
         cur = dict_cursor(conn)
-        today = date.today().isoformat()
+        today = get_ist_date().isoformat()
         cur.execute("""
             SELECT p.id as project_id, p.project_name, p.packaging_type, p.packaging_option,p.vendor,p.eta,
                 s.column_name, s.current_value, d.deadline
@@ -210,7 +210,7 @@ def get_alerts_for_project(project_name: str,current_user:User=Depends(get_curre
     conn = get_conn()
     try:
         cur = dict_cursor(conn)
-        today = date.today().isoformat()
+        today = get_ist_date().isoformat()
         cur.execute("""
             SELECT p.id as project_id, p.project_name, p.packaging_type, p.packaging_option, p.vendor, p.eta,
                 s.column_name, s.current_value, d.deadline
@@ -229,14 +229,12 @@ def get_alerts_for_project(project_name: str,current_user:User=Depends(get_curre
             tracker_pool.putconn(conn)
     
 
-
-
 @router.get("/api/due-today")
 def get_due_today(current_user:User=Depends(get_current_user)):
     conn = get_conn()
     try:
         cur = dict_cursor(conn)
-        today = date.today().isoformat()
+        today = get_ist_date().isoformat()
         cur.execute("""
             SELECT p.id as project_id, p.project_name, p.packaging_type, p.packaging_option, p.vendor, p.eta,
                 s.column_name, s.current_value, d.deadline
@@ -260,7 +258,7 @@ def get_due_today_for_project(project_name: str,current_user:User=Depends(get_cu
     conn = get_conn()
     try:
         cur = dict_cursor(conn)
-        today = date.today().isoformat()
+        today = get_ist_date().isoformat()
         cur.execute("""
             SELECT p.id as project_id, p.project_name, p.packaging_type, p.packaging_option, p.vendor, p.eta,
                 s.column_name, s.current_value, d.deadline
@@ -284,7 +282,7 @@ def update_status(project_id: int, data: dict = Body(...),current_user:User=Depe
     conn = get_conn()
     try:
         cur = conn.cursor()
-        today = date.today().isoformat()
+        today = get_ist_date().isoformat()
         GREEN_VALUES = ["Completed","Shared"]
 
         for col, value in data.items():
