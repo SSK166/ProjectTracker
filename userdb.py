@@ -23,6 +23,7 @@ class ResetRequest:
 
 class UserDB:
     def __init__(self):
+        print(f"DEBUG: Connecting to database host: '{os.getenv('DB_HOST')}' on port '{os.getenv('DB_PORT')}'")
         #creating a params object that I can use it to create new connections easily
         self.db_params={
             "host":os.getenv('DB_HOST'),
