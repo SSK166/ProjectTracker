@@ -84,7 +84,7 @@ document.addEventListener("DOMContentLoaded", () => {//to ensure that HTML eleme
                 const userProfile = await checkUser.json();
 
                 if (userProfile.role === 'admin') {
-                    window.location.href = 'http://localhost:5173/';
+                    window.location.href = '/admin';
                 } else if (userProfile.role === 'manager12') {
                     window.location.href = '/track';
                 } else {

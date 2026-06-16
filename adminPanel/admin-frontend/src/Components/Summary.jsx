@@ -7,7 +7,7 @@ export default function Summary() {
     useEffect(() => {
         const fetchSummary = async () => {
             try {
-                const summaryRes = await fetch('http://127.0.0.1:8000/admin/summary', { credentials: "include" });
+                const summaryRes = await fetch('/admin/summary', { credentials: "include" });
                 const summaryData = await summaryRes.json();
                 setSummary(summaryData);
             } catch (error) {

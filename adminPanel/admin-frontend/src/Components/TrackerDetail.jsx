@@ -18,9 +18,9 @@ export default function TrackerDetail() {
     };
 
     const baseUrls = {
-        project_tracker: "http://127.0.0.1:8000/track",
-        growth_tracker: "http://127.0.0.1:8000/growth",
-        ve_tracker: "http://127.0.0.1:8000/value"
+        project_tracker: "/track",
+        growth_tracker: "/growth",
+        ve_tracker: "/value"
     };
 
     const title = trackerTitles[trackerId];
@@ -79,7 +79,7 @@ export default function TrackerDetail() {
     useEffect(() => {
         const fetchUpcoming = async () => {
             try {
-                const upcomingRes = await fetch(`http://127.0.0.1:8000/admin/upcoming/${title}`, { credentials: "include" });
+                const upcomingRes = await fetch(`/admin/upcoming/${title}`, { credentials: "include" });
                 const upcomingSeven = await upcomingRes.json();
                 setUpcoming(upcomingSeven);
             } catch (err) {
@@ -93,7 +93,7 @@ export default function TrackerDetail() {
     useEffect(() => {
         const fetchSummaryData = async () => {
             try {
-                const summaryRes = await fetch("http://127.0.0.1:8000/admin/summary", { credentials: "include" });
+                const summaryRes = await fetch("/admin/summary", { credentials: "include" });
                 const summaryData = await summaryRes.json();
                 setSummaryInfo(summaryData);
             } catch (err) {
@@ -108,7 +108,7 @@ export default function TrackerDetail() {
     useEffect(() => {
         const fetchcompletedLast7Days = async () => {
             try {
-                const compLast7DaysRes = await fetch(`http://127.0.0.1:8000/admin/last-7-days-complete-projects/${title}`, { credentials: "include" });
+                const compLast7DaysRes = await fetch(`/admin/last-7-days-complete-projects/${title}`, { credentials: "include" });
                 const compLast7DaysData = await compLast7DaysRes.json();
                 setcompletedLast7Days(compLast7DaysData?compLast7DaysData.tasks:[]);
             } catch (err) {
@@ -121,7 +121,7 @@ export default function TrackerDetail() {
     useEffect(() => {
         const fetchTasksCompletedToday = async () => {
             try {
-                const compTodayRes = await fetch(`http://127.0.0.1:8000/admin/today-complete-tasks/${title}`, { credentials: "include" });
+                const compTodayRes = await fetch(`/admin/today-complete-tasks/${title}`, { credentials: "include" });
                 const compTodayData = await compTodayRes.json();
                 setTasksCompletedToday(compTodayData?compTodayData.tasks:[]);
             } catch (err) {

@@ -5,11 +5,28 @@ import TrackerDetail from './Components/TrackerDetail';
 import RemoveUsers from './Components/RemoveUsers';
 
 function App() {
+  const originalFetch = window.fetch;
+  window.fetch = async (...args) => {
+      const response = await originalFetch(...args);
+      //  Handle expired/missing sessions (307 Redirects)
+      if (response.url && response.url.includes('msg=')) {
+          const urlObj = new URL(response.url);
+          window.location.href = `/${urlObj.search}`;
+          return response;
+      }
+      // Handle insufficient permissions (403 Forbidden)
+      if (response.status === 403) {
+          // Automatically throw them back to the landing page with a clear notice
+          window.location.href = '/?msg=Access+Denied:+Administrator+privileges+required.';
+          return response;
+      }
+      return response;
+  };
   const logout = async () => {
-    const log=await fetch('http://127.0.0.1:8000/auth/logout',{credentials:'include'})
+    const log=await fetch('/auth/logout',{credentials:'include'})
     if(log.ok){
       const logRes= await log.json();
-      window.location.assign("http://127.0.0.1:8000")
+      window.location.assign("/")
     }
     else{
       const errData = await log.json();
@@ -18,7 +35,7 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/admin">
       <nav className="nav-container">
         <NavLink to='/' className={({ isActive }) => isActive ? "active-tab" : "normal-tab"}>Home Summary</NavLink>
         <NavLink to='/switch' className={({ isActive }) => isActive ? "active-tab" : "normal-tab"}>Switch Roles</NavLink>

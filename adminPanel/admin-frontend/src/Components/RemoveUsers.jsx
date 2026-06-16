@@ -17,7 +17,7 @@ export default function RemoveUsers() {
             const payload = new FormData();
             payload.append("username", targetUser.trim());
 
-            const deleteRes = await fetch('http://127.0.0.1:8000/admin/user', { 
+            const deleteRes = await fetch('/admin/user', { 
                 method: "DELETE",
                 credentials: "include",
                 body: payload 

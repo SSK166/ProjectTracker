@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# Node
+adminPanel/admin-frontend/node_modules/
+adminPanel/admin-frontend/.vite/
+
+# Excel files (optional, remove if you want them)
+*.xlsx
+
+# OS
+.DS_Store
+
+# Keep dist (built React app - needed for deployment)
+# Do NOT ignore dist
+
+.vscode
+/Additional/
+
+

@@ -16,13 +16,13 @@ def get_current_user(request: Request) -> User:
     if not session_id:
         raise HTTPException(
             status_code=307,
-            headers={"Location": "http://127.0.0.1:8000?msg=No+session+Please+log+in"}
+            headers={"Location": "/?msg=No+session+Please+log+in"}
         )
     cur_user = db.get_user_by_session(session_id=session_id)
     if not cur_user:
         raise HTTPException(
             status_code=307,
-            headers={"Location": "http://127.0.0.1:8000?msg=No+user+logged+in"}
+            headers={"Location": "/?msg=No+user+logged+in"}
         )
     return cur_user
 
@@ -31,7 +31,7 @@ def verify_roles(approved_roles: List[str]):
         if not current_user:
             raise HTTPException(
                 status_code=307,
-                headers={"Location": "http://127.0.0.1:8000?msg=No+user+logged+in"}
+                headers={"Location": "/?msg=No+user+logged+in"}
             )
         if current_user.role not in approved_roles:
             raise HTTPException(

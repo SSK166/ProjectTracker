@@ -24,7 +24,7 @@ export default function SwitchRoles() {
             payload.append("username", targetUser.trim());
             payload.append("role", targetRole.trim());
 
-            const updateRes = await fetch('http://127.0.0.1:8000/admin/role', { 
+            const updateRes = await fetch('/admin/role', { 
                 method: "PUT",
                 credentials: "include",
                 body: payload 

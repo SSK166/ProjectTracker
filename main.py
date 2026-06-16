@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from datetime import date
+import requests
 
 #Import from userdb
 from dependencies import get_current_user,verify_roles,get_ist_now
@@ -28,13 +29,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://127.0.0.1:5173","http://localhost:5173"], #local React development environment URL
-    allow_credentials=True,                 # Allows browser session cookies to pass through the security wall!
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["http://127.0.0.1:5173","http://localhost:5173"], #local React development environment URL
+#     allow_credentials=True,                 # Allows browser session cookies to pass through the security wall!
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 # In main.py
 
 db = UserDB()
@@ -66,15 +67,38 @@ def hash_password(password:str) -> str:
 def verify_password(hash_pw:str,pw:str) -> bool:
     return bcrypt.checkpw(pw.encode('utf-8'),hash_pw.encode('utf-8'))
 
-def send_otp_email(to_email: str, otp: str):
-    msg = MIMEText(f"Your password reset OTP is: {otp}\n\nValid for 10 minutes. Do not share this with anyone.")
-    msg["Subject"] = "Password Reset OTP"
-    msg["From"] = SMTP_EMAIL
-    msg["To"] = to_email
+def send_brevo_request(payload):
+#Helper to send request to brevo
+    url = "https://api.brevo.com/v3/smtp/email"
+    headers = {
+        "accept": "application/json",
+        "api-key": os.getenv("BREVO_API_KEY"),
+        "content-type": "application/json"
+    }
+    response = requests.post(url, json=payload, headers=headers)
+    
+    # Raise an error if the API call fails so your try/except block catches it
+    if response.status_code not in [200, 201]:
+        raise Exception(f"Brevo API error {response.status_code}: {response.text}")
+    return response
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(SMTP_EMAIL, SMTP_PASSWORD)
-        server.sendmail(SMTP_EMAIL, to_email, msg.as_string())
+def send_otp_email(to_email, otp):
+    payload = {
+        "sender": {"email": os.getenv("BREVO_SENDER_EMAIL")},
+        "to": [{"email": to_email}],
+        "subject": "Your Password Reset OTP",
+        "textContent": f"Your OTP is: {otp}. This code is valid for 10 minutes."
+    }
+    send_brevo_request(payload)
+
+def send_inactivity_email(to_email):
+    payload = {
+        "sender": {"email": os.getenv("BREVO_SENDER_EMAIL")},
+        "to": [{"email": to_email}],
+        "subject": "Project Tracker - Monthly Activity Ping",
+        "textContent": "This is an email sent to you to avoid inactivity. Please ignore this"
+    }
+    send_brevo_request(payload)
 
 def generate_otp() -> str:
     return str(random.randint(100000, 999999))
@@ -105,6 +129,7 @@ def register(username:str=Form(...),password:str=Form(...),email:str=Form(...)):
     db.create_user(new_user)
     return {"status": "success", "message": "Account created successfully!"}
 
+IS_PRODUCTION = os.getenv("ENVIRONMENT") == "production"
 @app.post("/auth/login")
 def login(response:Response,username:str=Form(...),password:str=Form(...)):
     existing_user=db.get_by_username(username)
@@ -120,15 +145,16 @@ def login(response:Response,username:str=Form(...),password:str=Form(...)):
             detail="Incorrect Username/Password"
         )
     session_id=uuid.uuid4().hex
-    db.create_session(existing_user.id,session_id,expires_at=get_ist_now+timedelta(days=7))
+    db.create_session(existing_user.id,session_id,expires_at=get_ist_now()+timedelta(days=7))
     # print(f"User {existing_user.name} Role {existing_user.role}")
     response.set_cookie(key="session_id",
                         value=session_id,
                         httponly=True,
-                        samesite='none',
-                        secure=True)
+                        samesite='lax',
+                        secure=IS_PRODUCTION)
     return {"status":"success",
     "message":"User logged in successfully"}
+
 
 @app.get("/auth/forgot-password-page", response_class=HTMLResponse)
 def serve_forgot_password_page(request: Request):
@@ -165,8 +191,8 @@ def logout(request:Request,response:Response):
         path="/",                          
         domain="127.0.0.1",                
         httponly=True,                     
-        samesite="none",
-        secure=True                  
+        samesite="lax",
+        secure=IS_PRODUCTION                  
     )
     return {"status":"success","message":"User logged out successfully"}
 
@@ -189,7 +215,7 @@ def forgot_password(username:str=Form(...),email: str = Form(...)):
 
     otp = generate_otp()
     hashed_otp = hash_password(otp)
-    db.store_otp(user.id, hashed_otp, expires_at=get_ist_now + timedelta(minutes=10))
+    db.store_otp(user.id, hashed_otp, expires_at=get_ist_now() + timedelta(minutes=10))
 
     try:
         send_otp_email(user.email, otp)
@@ -226,9 +252,13 @@ app.include_router(growth_router, prefix="/growth", tags=["Growth Data Feed"],de
 app.include_router(value_router, prefix="/value", tags=["Value Engineering Data Feed"],dependencies=[Depends(get_current_user)])
 
 #Mount static resources
-app.mount("/admin/assets", StaticFiles(directory="adminPanel/admin-frontend/dist/assets"), name="admin_assets")
+app.mount("/assets", StaticFiles(directory="adminPanel/admin-frontend/dist/assets"), name="admin_assets")
 app.mount("/landing/static", StaticFiles(directory="landing/static"), name="landing_static")
 app.mount("/track/static", StaticFiles(directory="ProjectTracker/static"), name="track_static")
 app.mount("/growth/static", StaticFiles(directory="GrowthTracker/static"), name="growth_static")
 app.mount("/value/static", StaticFiles(directory="VETracker/static"), name="value_static")
 
+@app.get("/admin", response_class=HTMLResponse)
+@app.get("/admin/{catchall:path}", response_class=HTMLResponse)
+def serve_admin_panel_ui(request: Request, current_user: User = Depends(get_current_user)):
+    return templates.TemplateResponse(request=request, name="adminPanel/admin-frontend/dist/index.html")

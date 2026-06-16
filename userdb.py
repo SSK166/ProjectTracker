@@ -3,9 +3,8 @@ import psycopg2.extras
 # import pandas as pd
 from dotenv import load_dotenv
 import os
-from datetime import datetime
 from psycopg2 import pool
-from dependencies import get_ist_now
+from datetime import datetime, timedelta, timezone
 
 load_dotenv()
 
@@ -123,7 +122,7 @@ class UserDB:
                     auth u JOIN sessions s
                     ON s.user_id=u.id
                     WHERE s.session_id = %s and s.expires_at > %s
-                """,(session_id,get_ist_now))
+                """,(session_id,get_ist_now()))
                 row=cur.fetchone()
                 if row is None:
                     return None
@@ -301,7 +300,7 @@ class UserDB:
                 cur.execute("""
                     SELECT * FROM otp_requests 
                     WHERE user_id = %s AND used = false AND expires_at > %s
-                """, (user_id, get_ist_now))
+                """, (user_id, get_ist_now()))
                 return cur.fetchone()
         finally:
             if conn:
@@ -317,5 +316,9 @@ class UserDB:
             if conn:
                 self.pool.putconn(conn)
         
+IST = timezone(timedelta(hours=5, minutes=30))
 
-
+def get_ist_now():
+    return datetime.now(IST)
+def get_ist_date():
+    return datetime.now(IST).date()
