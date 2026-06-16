@@ -1,0 +1,9 @@
+# Force Railway to load both Node and Python environments
+providers = ["node", "python"]
+
+[phases.build]
+# Install npm packages, compile your React/Vite assets, and install Python requirements
+cmds = [
+    "cd adminPanel/admin-frontend && npm install && npm run build",
+    "pip install -r requirements.txt"
+]

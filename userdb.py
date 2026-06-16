@@ -29,7 +29,8 @@ class UserDB:
             "port":os.getenv('DB_PORT'),
             "dbname":os.getenv('USER_DB_NAME'),
             "user":os.getenv('DB_USER'),
-            "password":os.getenv('DB_PASSWORD')
+            "password":os.getenv('DB_PASSWORD'),
+            "sslmode": "require" if os.getenv('ENVIRONMENT') else "disable"
         }
         self.pool = psycopg2.pool.ThreadedConnectionPool(
             minconn=2,
