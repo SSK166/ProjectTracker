@@ -1,7 +1,5 @@
 providers = ["node", "python"]
 
-[phases.setup]
-nixPkgs = ["nodejs_24"]
 
 [phases.build]
 cmds = [
