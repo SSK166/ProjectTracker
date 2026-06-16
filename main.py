@@ -24,10 +24,26 @@ from ProjectTracker.projectMain import router as project_router
 from GrowthTracker.growthMain import router as growth_router
 from VETracker.valueMain import router as value_router
 from adminPanel.adminMain import router as admin_router
+from GrowthTracker.growthDatabase import create_tables as create_growth_tables
+from ProjectTracker.projectDatabase import create_tables as create_project_tables
+from VETracker.valueDatabase import create_tables as create_value_tables
 
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI()
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    db.create_auth_table()
+    db.create_session_table()
+    db.create_otp_table()
+    create_growth_tables()
+    create_project_tables()
+    create_value_tables()
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 # app.add_middleware(
 #     CORSMiddleware,
@@ -50,12 +66,6 @@ SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 def serve_authentication_portal(request: Request):
     # Pass request directly as a primary keyword argument
     return templates.TemplateResponse(request=request, name="landing/templates/auth.html")
-
-@app.on_event("startup") 
-def manage_startup():
-    db.create_auth_table()
-    db.create_session_table()
-    db.create_otp_table()  
 
 def hash_password(password:str) -> str:
     #returns a hased password for the given password
