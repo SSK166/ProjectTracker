@@ -81,7 +81,6 @@ def create_tables():
     conn.commit()
     cursor.close()
     conn.close()
-    print("Tables created successfully")
 
 def import_from_excel():
     conn = get_conn()
