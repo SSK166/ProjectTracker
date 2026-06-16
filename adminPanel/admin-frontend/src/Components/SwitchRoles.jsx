@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import '../../../static/style.css'
 
 export default function SwitchRoles() {
     const [username, setUsername] = useState("");

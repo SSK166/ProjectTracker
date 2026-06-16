@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import '../../../static/style.css'
 
 export default function RemoveUsers() {
     const [username, setUsername] = useState("");

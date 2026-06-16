@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import {NavLink } from "react-router-dom";
-import "../../../static/style.css"; 
 
 export default function Summary() {
     const [summary, setSummary] = useState({});

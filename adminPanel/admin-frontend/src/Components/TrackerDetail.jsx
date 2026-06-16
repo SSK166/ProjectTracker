@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useParams, NavLink } from "react-router-dom";
-import "../../../static/style.css"; 
 
 export default function TrackerDetail() {
     const { trackerId } = useParams(); 
