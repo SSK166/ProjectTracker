@@ -1,3 +1,17 @@
+const originalFetch = window.fetch;
+window.fetch = async (...args) => {
+    const response = await originalFetch(...args);
+    if (response.url && response.url.includes('msg=')) {
+        const urlObj = new URL(response.url);
+        window.location.href = `/${urlObj.search}`;
+        return response;
+    }
+    if (response.status === 403) {
+        window.location.href = '/?msg=Access+Denied:+Insufficient+permissions+for+Growth+Tracker.';
+        return response;
+    }
+    return response;
+};
 const STATUS_COLS = [
     "KLD Status",
     "Artwork Status",
@@ -693,7 +707,7 @@ const logout = async () => {
     const log=await fetch('/auth/logout',{credentials:'include'})
     if(log.ok){
       const logRes= await log.json();
-      window.location.assign("")
+      window.location.assign("/")
     }
     else{
       const errData = await log.json();
