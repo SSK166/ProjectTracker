@@ -36,7 +36,6 @@ def get_conn():
     return conn
 
 def create_tables():
-    print(f"DEBUG: create_project_tables() is executing against database: '{os.getenv('PROJECT_DB_NAME')}'")
     conn = get_conn()
     cursor = conn.cursor()
 
