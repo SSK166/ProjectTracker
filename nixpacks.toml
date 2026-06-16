@@ -1,8 +1,0 @@
-providers = ["node", "python"]
-
-
-[phases.build]
-cmds = [
-    "cd adminPanel/admin-frontend && npm install && npm run build",
-    "pip install -r requirements.txt"
-]
