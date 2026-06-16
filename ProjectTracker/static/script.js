@@ -1,3 +1,19 @@
+//Global Fetch Interceptor
+const originalFetch = window.fetch;
+window.fetch = async (...args) => {
+    const response = await originalFetch(...args);
+    if (response.url && response.url.includes('msg=')) {
+        const urlObj = new URL(response.url);
+        window.location.href = `/${urlObj.search}`;
+        return response;
+    }
+    if (response.status === 403) {
+        window.location.href = '/?msg=Access+Denied:+Insufficient+permissions+for+Project+Tracker.';
+        return response;
+    }
+    return response;
+};
+
 const STATUS_COLS = [
     "KLD Status",
     "Artwork Status", 
@@ -708,10 +724,10 @@ async function loadDueToday() {
 }
 
 const logout = async () => {
-    const log=await fetch('http://127.0.0.1:8000/auth/logout',{credentials:'include'})
+    const log=await fetch('/auth/logout',{credentials:'include'})
     if(log.ok){
       const logRes= await log.json();
-      window.location.assign("http://127.0.0.1:8000")
+      window.location.assign("/")
     }
     else{
       const errData = await log.json();
@@ -722,19 +738,19 @@ const logout = async () => {
 const switchTracker = async (tracker) => {
     const trackerChooser=document.getElementById("trackers")
     trackerChooser.value=tracker;
-    if(tracker!="admin/summary") window.location.assign(`http://127.0.0.1:8000/${tracker}`)
+    if(tracker!="admin/summary") window.location.assign(`/${tracker}`)
     else{
-        const res = await fetch(`http://127.0.0.1:8000/${tracker}`, { credentials: "include" });
+        const res = await fetch(`/${tracker}`, { credentials: "include" });
         if (!res.ok) {
             alert("Permission denied.");
             return;
         }
         if (res.status === 307 || res.status === 401) {
             alert("No user logged in.");
-            window.location.assign("http://127.0.0.1:8000");
+            window.location.assign("/");
             return;
         }
-        window.location.assign("http://localhost:5173")
+        window.location.assign("/admin")
     }
 }
 loadProjects()
