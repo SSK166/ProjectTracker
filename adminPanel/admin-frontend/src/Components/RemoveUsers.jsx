@@ -1,7 +1,27 @@
-import { useState } from 'react';
+import { useState,useEffect } from 'react';
 
 export default function RemoveUsers() {
     const [username, setUsername] = useState("");
+    const [users,setUsers] = useState([]);
+    const getAllUsers = async () => {
+            try {
+                const userRes = await fetch('/admin/all-users', { credentials: 'include' });
+                if (userRes.ok) {
+                    const userData = await userRes.json();
+                    setUsers(userData.users); // backend returns {status, users}, so unwrap it
+                } else {
+                    const errData = await userRes.json();
+                    alert(`Error: ${errData.detail || "Failed to fetch users."}`);
+                }
+            } catch (error) {
+                console.error("Network Error :", error);
+                alert("Permission Denied.");
+            }
+        };
+     
+    useEffect(() => {
+        getAllUsers();
+    }, []);
 
     const remove = async (targetUser) => {
         if (!targetUser.trim()) {
@@ -25,6 +45,7 @@ export default function RemoveUsers() {
             if (deleteRes.ok) {
                 alert("User deleted successfully!");
                 setUsername("");
+                getAllUsers();
             } else {
                 const errData = await deleteRes.json();
                 alert(`Error: ${errData.detail || "Failed to delete user."}`);
@@ -39,16 +60,20 @@ export default function RemoveUsers() {
     return (
         <div className="panel-form-card">
             <h3>Delete User</h3>
-            
             <div className="field-group">
                 <label htmlFor="uname" className="field-label">Username</label>
-                <input 
-                    type="text" 
+                <select
                     id="uname"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)} 
-                    placeholder="Username"
-                />
+                    onChange={(e) => setUsername(e.target.value)}
+                >
+                    <option value="" disabled>-- Select User --</option>
+                    {users.map((u) => (
+                        <option key={u.name} value={u.name}>
+                            {u.name}
+                        </option>
+                    ))}
+                </select>
             </div>
 
             <button 

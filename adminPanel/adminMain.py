@@ -189,6 +189,11 @@ def update_role(username:str=Form(...),role:str=Form(...),current_user:User=Depe
             status_code=404,
             detail="No user found. Enter the right username"
         )
+    if existing_user.id == current_user.id:
+        raise HTTPException(
+            status_code=400,
+            detail="You cannot change your own role"
+        )
     switch=db.switch_role(existing_user.id,role)
     if not switch:
         raise HTTPException(
@@ -300,3 +305,13 @@ def get_tasks_completed_today(tracker:str,current_user:User=Depends(verify_roles
             _get_pool(tracker).putconn(conn)
 
 
+@router.get('/all-users')
+def get_users(current_user:User=Depends(verify_roles(["admin"]))):
+    users = db.get_all_users()
+    if users:
+        return {'status':'success','users':users}
+    else:
+        raise HTTPException(
+            status_code=500,
+            detail="Server Error No users found"
+        )
