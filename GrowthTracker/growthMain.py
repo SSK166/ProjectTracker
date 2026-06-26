@@ -315,7 +315,7 @@ def update_status(project_id: int, data: dict = Body(...),current_user:User=Depe
     
 
 @router.post("/api/deadlines/{project_id}")
-def save_deadlines(project_id: int, data: dict = Body(...),current_user:User=Depends(verify_roles(["admin","manager34"]))):
+def save_deadlines(project_id: int, data: dict = Body(...),current_user:User=Depends(verify_roles(["admin"]))):
     conn = get_conn()
     try:
         cur = conn.cursor()
@@ -369,7 +369,21 @@ def delete_project(project_id: int,current_user:User=Depends(verify_roles(["admi
     finally:
         if conn:
             tracker_pool.putconn(conn)
-    
+
+@router.delete("/api/projects")
+def delete_all_projects(current_user:User=Depends(verify_roles(["admin","manager34"]))):  # change role per tracker
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM deadlines")
+        cur.execute("DELETE FROM status")
+        cur.execute("DELETE FROM projects")  # cascades to status & deadlines if FK is set up with ON DELETE CASCADE
+        conn.commit()
+        cur.close()
+        return {"status": "ok", "message": "All projects deleted"}
+    finally:
+        if conn:
+            tracker_pool.putconn(conn)    
 
 @router.get("/api/download/{excel_name}")
 def download_excel(excel_name: str,current_user:User=Depends(verify_roles(["admin","manager34"]))):
@@ -429,7 +443,7 @@ def download_excel(excel_name: str,current_user:User=Depends(verify_roles(["admi
     
 
 @router.post("/api/import")
-async def import_excel(file: UploadFile = File(...),current_user:User=Depends(verify_roles(["admin","manager34"]))):
+async def import_excel(file: UploadFile = File(...),mode:str="append",current_user:User=Depends(verify_roles(["admin","manager34"]))):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
         contents = await file.read()
         tmp.write(contents)
@@ -458,6 +472,9 @@ async def import_excel(file: UploadFile = File(...),current_user:User=Depends(ve
         cur = conn.cursor()
         rows_imported = 0
         GREEN_VALUES = ["Received", "Connected", "Completed", "KLD Shared"]
+        if mode == "overwrite":
+            cur.execute("DELETE FROM projects")  # cascades if FK set up, else delete status/deadlines first
+            conn.commit()
         for _, row in df.iterrows():
             cur.execute("""
                 INSERT INTO projects (project_name, packaging_type, packaging_option)

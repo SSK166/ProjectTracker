@@ -672,14 +672,16 @@ async function importExcel() {
         return
     }
 
-    const confirmed = confirm(`Import "${file.name}" into the tracker? This will add all rows from the file.`)
-    if (!confirmed) return
+    const mode = confirm("Clear existing data and import fresh?\n\nOK = Overwrite (clear all)\nCancel = Append (keep existing)") 
+    ? "overwrite" 
+    : "append";
 
     const formData = new FormData()
     formData.append("file", file)
 
-    const res = await fetch("/value/api/import", {
+    const res = await fetch(`/value/api/import?mode=${mode}`, {
         method: "POST",
+        credentials:"include",
         body: formData
     })
 
@@ -727,6 +729,27 @@ async function loadDueToday() {
         </tr>
     `).join("")
     // (val == null || val === "") ? "—" : val
+}
+async function deleteAllProjects() {
+    const confirm1 = confirm("This will permanently delete ALL projects and their data. Are you sure?")
+    if (!confirm1) return
+    const confirm2 = confirm("This cannot be undone. Click OK to confirm deletion of all projects.")
+    if (!confirm2) return
+
+    const res = await fetch("/value/api/projects", { method: "DELETE", credentials: "include" })
+    if (res.ok) {
+        alert("All projects deleted.")
+        await loadProjects()
+        document.getElementById("table-head").innerHTML = ""
+        document.getElementById("table-body").innerHTML = ""
+        document.getElementById("selected-project-name").textContent = "Select a project"
+        await loadAlerts()
+        await loadDueToday()
+        switchTab("tracker")
+    } else {
+        const err = await res.json()
+        alert(`Error: ${err.detail ?? "Failed to delete all projects."}`)
+    }
 }
 
 const logout = async () => {

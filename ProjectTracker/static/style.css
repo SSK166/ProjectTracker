@@ -585,6 +585,11 @@ tr.clickable:hover {
     margin-left:auto;
 }
 
+.delete-all{
+    align-self:flex-end;
+    margin-left:auto;
+}
+
 #trackers {
     background: transparent;
     color: var(--color-text-primary, #222);
