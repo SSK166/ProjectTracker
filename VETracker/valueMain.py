@@ -408,6 +408,7 @@ def delete_all_projects(current_user:User=Depends(verify_roles(["admin","manager
         cur.execute("DELETE FROM deadlines")
         cur.execute("DELETE FROM status")
         cur.execute("DELETE FROM projects")  # cascades to status & deadlines if FK is set up with ON DELETE CASCADE
+        cur.execute("ALTER SEQUENCE projects_id_seq RESTART WITH 1")
         conn.commit()
         cur.close()
         return {"status": "ok", "message": "All projects deleted"}
@@ -520,7 +521,10 @@ async def import_excel(file: UploadFile = File(...),mode:str="append",current_us
         rows_imported = 0
         GREEN_VALUES = ["Completed","Shared"]
         if mode == "overwrite":
+            cur.execute("DELETE FROM deadlines")
+            cur.execute("DELETE FROM status")
             cur.execute("DELETE FROM projects")  # cascades if FK set up, else delete status/deadlines first
+            cur.execute("ALTER SEQUENCE projects_id_seq RESTART WITH 1")
             conn.commit()
         for _, row in df.iterrows():
             raw_eta = row.get("ETA")
